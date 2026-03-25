@@ -5,8 +5,8 @@ from pathlib import Path
 
 import joblib
 from sklearn.metrics import accuracy_score
-from datasets import load_dataset
 
+from imdb_sentiment.data import dataset as dataset_module
 from imdb_sentiment.features.preprocess import normalize_review_text
 from imdb_sentiment.models.baseline import build_baseline_model
 from imdb_sentiment.settings import AppConfig
@@ -17,7 +17,7 @@ def _ensure_parent_dir(path: Path) -> None:
 
 
 def run_training(config: AppConfig) -> dict[str, float]:
-    dataset = load_dataset("imdb")
+    dataset = dataset_module.load_imdb_dataset()
     train_split = dataset["train"]
     test_split = dataset["test"]
 

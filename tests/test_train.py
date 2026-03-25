@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 
+import imdb_sentiment.data.dataset as dataset_module
 import imdb_sentiment.pipelines.train as train_module
 from imdb_sentiment.settings import load_config
 
@@ -34,7 +35,7 @@ def test_run_training_returns_accuracy(tmp_path: Path, monkeypatch) -> None:
             "label": [1, 0],
         },
     }
-    monkeypatch.setattr(train_module, "load_dataset", lambda _: fake_dataset)
+    monkeypatch.setattr(dataset_module, "load_imdb_dataset", lambda: fake_dataset)
 
     config = load_config(config_path)
     metrics = train_module.run_training(config)

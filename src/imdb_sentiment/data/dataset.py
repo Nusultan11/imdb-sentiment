@@ -1,12 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
-
-import pandas as pd
+from datasets import DatasetDict, load_dataset as hf_load_dataset
 
 
-def load_dataset(path: str | Path) -> pd.DataFrame:
-    dataset_path = Path(path)
-    if not dataset_path.exists():
-        raise FileNotFoundError(f"Dataset not found: {dataset_path}")
-    return pd.read_csv(dataset_path)
+def load_imdb_dataset() -> DatasetDict:
+    return hf_load_dataset("imdb")
