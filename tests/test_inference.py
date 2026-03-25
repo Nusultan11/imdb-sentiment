@@ -1,4 +1,5 @@
 import joblib
+import pytest
 
 from imdb_sentiment.inference.predict import load_model, predict_texts
 from imdb_sentiment.models.baseline import build_baseline_model
@@ -29,3 +30,24 @@ def test_inference_returns_binary_predictions(tmp_path) -> None:
     assert isinstance(preds, list)
     assert len(preds) == 2
     assert all(pred in [0, 1] for pred in preds)
+
+
+def test_load_model_raises_for_missing_path(tmp_path) -> None:
+    with pytest.raises(FileNotFoundError, match="Model file not found"):
+        load_model(tmp_path / "missing.joblib")
+
+
+def test_predict_texts_raises_on_empty_input(tmp_path) -> None:
+    model = build_baseline_model(
+        max_features=100,
+        ngram_range=(1, 2),
+        max_iter=100,
+        random_state=42,
+    )
+    model.fit(["good movie", "bad movie"], [1, 0])
+    model_path = tmp_path / "baseline.joblib"
+    joblib.dump(model, model_path)
+    loaded_model = load_model(model_path)
+
+    with pytest.raises(ValueError, match="texts must not be empty"):
+        predict_texts(loaded_model, [])

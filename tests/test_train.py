@@ -2,6 +2,7 @@ from pathlib import Path
 import json
 
 import imdb_sentiment.pipelines.train as train_module
+import pytest
 from imdb_sentiment.settings import load_config
 
 
@@ -34,14 +35,42 @@ def test_run_training_returns_accuracy(tmp_path: Path, monkeypatch) -> None:
             "label": [1, 0],
         },
     }
-    monkeypatch.setattr(train_module.dataset_module, "load_imdb_dataset", lambda: fake_dataset)
+    monkeypatch.setattr(train_module, "load_imdb_dataset", lambda: fake_dataset)
 
     config = load_config(config_path)
     metrics = train_module.run_training(config)
 
-    assert "accuracy" in metrics
-    assert 0.0 <= metrics["accuracy"] <= 1.0
+    assert {"accuracy", "precision", "recall", "f1", "confusion_matrix"} <= set(metrics)
+    assert 0.0 <= float(metrics["accuracy"]) <= 1.0
+    assert 0.0 <= float(metrics["precision"]) <= 1.0
+    assert 0.0 <= float(metrics["recall"]) <= 1.0
+    assert 0.0 <= float(metrics["f1"]) <= 1.0
+    assert isinstance(metrics["confusion_matrix"], list)
     assert config.paths.model_output.exists()
     assert config.paths.metrics_output.exists()
     saved_metrics = json.loads(config.paths.metrics_output.read_text(encoding="utf-8"))
     assert saved_metrics == metrics
+
+
+def test_run_training_rejects_unknown_model_type(tmp_path: Path) -> None:
+    config_path = tmp_path / "bad_model.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "seed: 42",
+                "paths:",
+                f"  model_output: {tmp_path.as_posix()}/artifacts/models/baseline.joblib",
+                f"  metrics_output: {tmp_path.as_posix()}/artifacts/reports/metrics.json",
+                "model:",
+                "  type: svm",
+                "  max_features: 100",
+                "  ngram_range: [1, 2]",
+                "  max_iter: 100",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_config(config_path)
+    with pytest.raises(ValueError, match="Unsupported model.type"):
+        train_module.run_training(config)

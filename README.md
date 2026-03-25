@@ -42,6 +42,7 @@ model, and stores:
 
 - the trained model in `artifacts/models/baseline.joblib`
 - evaluation metrics in `artifacts/reports/metrics.json`
+- quality metrics include `accuracy`, `precision`, `recall`, `f1`, and `confusion_matrix`
 
 ## Quick start
 
@@ -56,7 +57,7 @@ python -m pytest
 
 ```powershell
 $env:PYTHONPATH="src"
-python -m imdb_sentiment.cli
+python -m imdb_sentiment.cli --config configs/baseline.yaml
 ```
 
 After training, check:
@@ -68,5 +69,5 @@ After training, check:
 
 - Training needs network access the first time because the IMDb dataset is downloaded
   from Hugging Face.
-- Tests do not need network access because the dataset loader is mocked in
-  `tests/test_train.py`.
+- Tests do not need network access: training tests mock the dataset loader and
+  inference tests create a temporary model artifact.
