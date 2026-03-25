@@ -1,5 +1,6 @@
-from imdb_sentiment.features.preprocess import normalize_text
+from imdb_sentiment.features.preprocess import normalize_review_text
 
-
-def test_normalize_text_removes_noise() -> None:
-    assert normalize_text("  Amazing MOVIE!!! 10/10  ") == "amazing movie 10 10"
+def test_normalize_review_text_removes_html_and_extra_spaces()->None:
+    raw_text="Hello<br /><br />world   "
+    excepted="Hello world"
+    assert normalize_review_text(raw_text)==excepted

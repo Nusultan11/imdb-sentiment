@@ -8,16 +8,8 @@ import yaml
 
 @dataclass(slots=True)
 class PathsConfig:
-    raw_data: Path
     model_output: Path
     metrics_output: Path
-
-
-@dataclass(slots=True)
-class DataConfig:
-    text_column: str
-    target_column: str
-    test_size: float
 
 
 @dataclass(slots=True)
@@ -32,7 +24,6 @@ class ModelConfig:
 class AppConfig:
     seed: int
     paths: PathsConfig
-    data: DataConfig
     model: ModelConfig
 
 
@@ -41,14 +32,8 @@ def load_config(path: str | Path = "configs/baseline.yaml") -> AppConfig:
     return AppConfig(
         seed=payload["seed"],
         paths=PathsConfig(
-            raw_data=Path(payload["paths"]["raw_data"]),
             model_output=Path(payload["paths"]["model_output"]),
             metrics_output=Path(payload["paths"]["metrics_output"]),
-        ),
-        data=DataConfig(
-            text_column=payload["data"]["text_column"],
-            target_column=payload["data"]["target_column"],
-            test_size=payload["data"]["test_size"],
         ),
         model=ModelConfig(
             type=payload["model"]["type"],

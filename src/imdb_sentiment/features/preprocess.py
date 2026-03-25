@@ -3,11 +3,11 @@ from __future__ import annotations
 import re
 
 
+HTML_BREAK_RE = re.compile(r"<br\s*/?>",flags=re.IGNORECASE)
 WHITESPACE_RE = re.compile(r"\s+")
-NON_ALNUM_RE = re.compile(r"[^a-z0-9\s]")
 
 
-def normalize_text(text: str) -> str:
-    lowered = text.lower().strip()
-    cleaned = NON_ALNUM_RE.sub(" ", lowered)
-    return WHITESPACE_RE.sub(" ", cleaned).strip()
+def normalize_review_text(text: str) -> str:
+    text = HTML_BREAK_RE.sub(" ", text)
+    text = WHITESPACE_RE.sub(" ", text).strip()
+    return text
