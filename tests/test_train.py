@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 import imdb_sentiment.pipelines.train as train_module
 from imdb_sentiment.settings import load_config
@@ -11,8 +12,8 @@ def test_run_training_returns_accuracy(tmp_path: Path, monkeypatch) -> None:
             [
                 "seed: 42",
                 "paths:",
-                "  model_output: artifacts/models/baseline.joblib",
-                "  metrics_output: artifacts/reports/metrics.json",
+                f"  model_output: {tmp_path.as_posix()}/artifacts/models/baseline.joblib",
+                f"  metrics_output: {tmp_path.as_posix()}/artifacts/reports/metrics.json",
                 "model:",
                 "  type: logistic_regression",
                 "  max_features: 100",
@@ -40,3 +41,7 @@ def test_run_training_returns_accuracy(tmp_path: Path, monkeypatch) -> None:
 
     assert "accuracy" in metrics
     assert 0.0 <= metrics["accuracy"] <= 1.0
+    assert config.paths.model_output.exists()
+    assert config.paths.metrics_output.exists()
+    saved_metrics = json.loads(config.paths.metrics_output.read_text(encoding="utf-8"))
+    assert saved_metrics == metrics

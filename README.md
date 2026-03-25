@@ -1,73 +1,72 @@
 # imdb-sentiment
 
-ML-проект для классификации тональности отзывов IMDb.
+Baseline sentiment analysis project for IMDb reviews.
 
-## Архитектура
+## Project layout
 
 ```text
 imdb-sentiment/
-├── README.md
-├── .gitignore
-├── pyproject.toml
-├── configs/
-│   └── baseline.yaml
-├── data/
-│   ├── raw/
-│   │   └── .gitkeep
-│   ├── interim/
-│   │   └── .gitkeep
-│   └── processed/
-│       └── .gitkeep
-├── notebooks/
-│   └── .gitkeep
-├── src/
-│   └── imdb_sentiment/
-│       ├── __init__.py
-│       ├── cli.py
-│       ├── settings.py
-│       ├── data/
-│       │   ├── __init__.py
-│       │   └── dataset.py
-│       ├── features/
-│       │   ├── __init__.py
-│       │   └── preprocess.py
-│       ├── inference/
-│       │   ├── __init__.py
-│       │   └── predict.py
-│       ├── models/
-│       │   ├── __init__.py
-│       │   └── baseline.py
-│       └── pipelines/
-│           ├── __init__.py
-│           └── train.py
-├── tests/
-│   ├── __init__.py
-│   ├── test_preprocess.py
-│   └── test_train.py
-└── artifacts/
-    ├── models/
-    │   └── .gitkeep
-    └── reports/
-        └── .gitkeep
+|-- README.md
+|-- .gitignore
+|-- pyproject.toml
+|-- configs/
+|   `-- baseline.yaml
+|-- data/
+|   |-- raw/
+|   |   `-- .gitkeep
+|   |-- interim/
+|   |   `-- .gitkeep
+|   `-- processed/
+|       `-- .gitkeep
+|-- notebooks/
+|   |-- .gitkeep
+|   `-- baseline_eda_imdb.ipynb
+|-- src/
+|   `-- imdb_sentiment/
+|       |-- cli.py
+|       |-- settings.py
+|       |-- data/
+|       |-- features/
+|       |-- inference/
+|       |-- models/
+|       `-- pipelines/
+|-- tests/
+`-- artifacts/
 ```
 
-## Идея слоев
+## Current pipeline
 
-- `configs/`: параметры экспериментов и путей.
-- `data/`: сырые, промежуточные и подготовленные данные.
-- `src/imdb_sentiment/data`: загрузка и валидация датасета.
-- `src/imdb_sentiment/features`: очистка текста и feature engineering.
-- `src/imdb_sentiment/models`: baseline и будущие модели.
-- `src/imdb_sentiment/pipelines`: orchestration обучения и оценки.
-- `src/imdb_sentiment/inference`: предсказания на новых отзывах.
-- `artifacts/`: сохраненные модели, метрики и отчеты.
+The baseline training pipeline downloads the IMDb dataset through the Hugging Face
+`datasets` package, normalizes review text, trains a TF-IDF + Logistic Regression
+model, and stores:
 
-## Быстрый старт
+- the trained model in `artifacts/models/baseline.joblib`
+- evaluation metrics in `artifacts/reports/metrics.json`
 
-```bash
+## Quick start
+
+```powershell
 python -m venv .venv
 .venv\Scripts\activate
 pip install -e .[dev]
-pytest
+python -m pytest
+```
+
+## Train the model
+
+```powershell
+$env:PYTHONPATH="src"
 python -m imdb_sentiment.cli
 ```
+
+After training, check:
+
+- `artifacts/models/baseline.joblib`
+- `artifacts/reports/metrics.json`
+
+## Notes
+
+- Training needs network access the first time because the IMDb dataset is downloaded
+  from Hugging Face.
+- Tests do not need network access because the dataset loader is mocked in
+  `tests/test_train.py`.
