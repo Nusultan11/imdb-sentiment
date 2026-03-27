@@ -21,6 +21,7 @@ def build_baseline_model(
                     max_features=max_features,
                     ngram_range=ngram_range,
                     preprocessor=normalize_review_text,
+                    lowercase=False,
                 ),
             ),
             ("classifier", LogisticRegression(max_iter=max_iter, random_state=random_state)),
