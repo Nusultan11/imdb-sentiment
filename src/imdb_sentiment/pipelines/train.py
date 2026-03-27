@@ -5,10 +5,10 @@ from pathlib import Path
 
 from datasets import Dataset
 import joblib
-from sklearn.metrics import accuracy_score, confusion_matrix, precision_recall_fscore_support
+from sklearn.metrics import accuracy_score
 from sklearn.pipeline import Pipeline
 
-from imdb_sentiment.data.dataset import load_imdb_dataset
+from imdb_sentiment.data import dataset as dataset_module
 from imdb_sentiment.models.baseline import build_baseline_model
 from imdb_sentiment.settings import AppConfig
 
@@ -26,7 +26,7 @@ def _prepare_split(split: Dataset) -> tuple[list[str], list[int]]:
 def _save_artifacts(
     config: AppConfig,
     model: Pipeline,
-    metrics: dict[str, float | list[list[int]]],
+    metrics: dict[str, float],
 ) -> None:
     _ensure_parent_dir(config.paths.model_output)
     _ensure_parent_dir(config.paths.metrics_output)
@@ -38,11 +38,11 @@ def _save_artifacts(
     )
 
 
-def run_training(config: AppConfig) -> dict[str, float | list[list[int]]]:
+def run_training(config: AppConfig) -> dict[str, float]:
     if config.model.type != "logistic_regression":
         raise ValueError(f"Unsupported model.type: {config.model.type}")
 
-    dataset = load_imdb_dataset()
+    dataset = dataset_module.load_imdb_dataset()
     train_split = dataset["train"]
     test_split = dataset["test"]
 
@@ -58,22 +58,8 @@ def run_training(config: AppConfig) -> dict[str, float | list[list[int]]]:
 
     model.fit(x_train, y_train)
     y_pred = model.predict(x_test)
-    precision, recall, f1, _ = precision_recall_fscore_support(
-        y_test,
-        y_pred,
-        average="binary",
-        pos_label=1,
-        zero_division=0,
-    )
-    cm = confusion_matrix(y_test, y_pred, labels=[0, 1]).tolist()
 
-    metrics: dict[str, float | list[list[int]]] = {
-        "accuracy": float(accuracy_score(y_test, y_pred)),
-        "precision": float(precision),
-        "recall": float(recall),
-        "f1": float(f1),
-        "confusion_matrix": cm,
-    }
+    metrics = {"accuracy": float(accuracy_score(y_test, y_pred))}
 
     _save_artifacts(config, model, metrics)
 
