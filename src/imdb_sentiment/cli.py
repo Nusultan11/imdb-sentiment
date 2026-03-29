@@ -10,7 +10,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Train IMDb sentiment baseline model")
     parser.add_argument(
         "--config",
-        default="configs/baseline.yaml",
+        default="configs/experiments/tfidf_baseline_v1.yaml",
         help="Path to YAML config file",
     )
     args = parser.parse_args()

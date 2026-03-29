@@ -9,7 +9,7 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from sklearn.pipeline import Pipeline
 
 from imdb_sentiment.data.dataset import load_imdb_dataset
-from imdb_sentiment.models.baseline import build_baseline_model
+from imdb_sentiment.models.tfidf.baseline import build_baseline_model
 from imdb_sentiment.settings import AppConfig
 
 
@@ -43,11 +43,20 @@ def run_training(config: AppConfig) -> dict[str, float]:
         raise ValueError(f"Unsupported model.type: {config.model.type}")
 
     dataset = load_imdb_dataset()
-    train_split = dataset["train"]
-    test_split = dataset["test"]
+
+    full_train = dataset["train"]
+    test_split = dataset["test"]  # пока сохраняем, но не используем на этом шаге
+
+    train_val_split = full_train.train_test_split(
+        test_size=0.2,
+        seed=config.seed,
+    )
+
+    train_split = train_val_split["train"]
+    val_split = train_val_split["test"]
 
     x_train, y_train = _prepare_split(train_split)
-    x_test, y_test = _prepare_split(test_split)
+    x_val, y_val = _prepare_split(val_split)
 
     model = build_baseline_model(
         max_features=config.model.max_features,
@@ -57,10 +66,10 @@ def run_training(config: AppConfig) -> dict[str, float]:
     )
 
     model.fit(x_train, y_train)
-    y_pred = model.predict(x_test)
+    y_pred = model.predict(x_val)
 
     precision, recall, f1, _ = precision_recall_fscore_support(
-        y_test,
+        y_val,
         y_pred,
         average="binary",
         pos_label=1,
@@ -68,7 +77,7 @@ def run_training(config: AppConfig) -> dict[str, float]:
     )
 
     metrics = {
-        "accuracy": float(accuracy_score(y_test, y_pred)),
+        "accuracy": float(accuracy_score(y_val, y_pred)),
         "precision": float(precision),
         "recall": float(recall),
         "f1": float(f1),
