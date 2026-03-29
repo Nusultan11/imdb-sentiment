@@ -52,7 +52,7 @@ def _require_ngram_range(value: Any, name: str) -> tuple[int, int]:
     return value[0], value[1]
 
 
-def load_config(path: str | Path = "configs/experiments/tfidf_baseline_v1.yaml") -> AppConfig:
+def load_config(path: str | Path = "configs/baseline.yaml") -> AppConfig:
     config_path = Path(path)
     payload = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     payload = _require_dict(payload, "config")
