@@ -77,3 +77,28 @@ def test_predict_from_model_path_returns_binary_predictions(tmp_path) -> None:
     assert isinstance(preds, list)
     assert len(preds) == 2
     assert all(pred in [0, 1] for pred in preds)
+
+
+def test_predict_texts_accepts_generator_input(tmp_path) -> None:
+    model = build_baseline_model(
+        max_features=100,
+        ngram_range=(1, 2),
+        max_iter=100,
+        random_state=42,
+    )
+    train_texts = ["excellent movie", "great acting", "boring movie", "terrible acting"]
+    train_labels = [1, 1, 0, 0]
+    model.fit(train_texts, train_labels)
+
+    text_stream = (
+        text
+        for text in [
+            "excellent story",
+            "terrible story",
+        ]
+    )
+
+    preds = predict_texts(model, text_stream)
+
+    assert preds == [1, 0]
+    assert all(isinstance(pred, int) for pred in preds)
