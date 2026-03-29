@@ -1,0 +1,11 @@
+seed: 42
+
+paths:
+  model_output: artifacts/experiments/lstm/baseline_v1/model.pt
+  metrics_output: artifacts/experiments/lstm/baseline_v1/val_metrics.json
+
+model:
+  type: lstm
+  max_features: 20000
+  ngram_range: [1, 1]
+  max_iter: 10

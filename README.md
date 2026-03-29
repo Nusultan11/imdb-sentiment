@@ -1,8 +1,13 @@
 # imdb-sentiment
 
-Baseline ML project for sentiment analysis of IMDb movie reviews.
+Experiment-ready ML project for sentiment analysis on IMDb reviews.
 
-The project trains a **TF-IDF + Logistic Regression** baseline, evaluates it on the IMDb test split, saves the trained model and evaluation metrics, and provides a simple inference layer for loading the saved model and predicting sentiment for new texts.
+The repository keeps a clean, stable **TF-IDF + Logistic Regression** baseline while also providing a scaffold for future **TF-IDF**, **LSTM**, and **transformer** experiments. The current tracked baseline includes:
+
+- a saved model artifact in `artifacts/models/baseline.joblib`
+- tracked baseline metrics in `artifacts/reports/metrics.json`
+- CLI commands for training and inference
+- an evaluation pipeline for test-set scoring
 
 ---
 
@@ -10,15 +15,12 @@ The project trains a **TF-IDF + Logistic Regression** baseline, evaluates it on 
 
 - clean `src/` project layout
 - YAML-based configuration
-- dataset loading from Hugging Face with local CSV fallback
-- dataset validation (`train` / `test`, required columns)
-- text normalization integrated into the model pipeline
-- baseline model: **TF-IDF + Logistic Regression**
-- saved artifacts:
-  - trained model
-  - evaluation metrics
-- inference utilities for loading the saved model and running predictions
-- pytest-based tests for preprocessing, training, and inference
+- offline-capable dataset loading with Hugging Face first and local CSV fallback second
+- deterministic TF-IDF preprocessing inside the sklearn pipeline
+- fail-fast model loading when `scikit-learn` versions do not match
+- CLI entrypoints for both `train` and `predict`
+- experiment config scaffolds for TF-IDF, LSTM, and transformer work
+- tracked baseline artifacts for reproducible local inference
 
 ---
 
@@ -30,8 +32,18 @@ imdb-sentiment/
 |-- AGENTS.md
 |-- .gitignore
 |-- pyproject.toml
+|
 |-- configs/
-|   `-- baseline.yaml
+|   |-- baseline.yaml
+|   `-- experiments/
+|       |-- tfidf_baseline_v1.yaml
+|       |-- tfidf_max_features_10000.yaml
+|       |-- lstm_baseline_v1.yaml
+|       `-- transformer_distilbert_v1.yaml
+|
+|-- docs/
+|   `-- experiments.md
+|
 |-- data/
 |   |-- raw/
 |   |   `-- .gitkeep
@@ -39,14 +51,36 @@ imdb-sentiment/
 |   |   `-- .gitkeep
 |   `-- processed/
 |       `-- .gitkeep
+|
 |-- notebooks/
 |   |-- .gitkeep
-|   `-- baseline_eda_imdb.ipynb
+|   |-- baseline_eda_imdb.ipynb
+|   `-- tf_idf_baseline_v1.ipynb
+|
 |-- artifacts/
 |   |-- models/
-|   |   `-- .gitkeep
-|   `-- reports/
-|       `-- .gitkeep
+|   |   |-- .gitkeep
+|   |   `-- baseline.joblib
+|   |-- reports/
+|   |   |-- .gitkeep
+|   |   `-- metrics.json
+|   `-- experiments/
+|       |-- tfidf/
+|       |   |-- .gitkeep
+|       |   |-- baseline_v1/
+|       |   |   `-- .gitkeep
+|       |   `-- max_features_10000/
+|       |       `-- .gitkeep
+|       |-- lstm/
+|       |   |-- .gitkeep
+|       |   `-- baseline_v1/
+|       |       `-- .gitkeep
+|       `-- transformer/
+|           |-- .gitkeep
+|           `-- distilbert_v1/
+|               `-- checkpoint/
+|                   `-- .gitkeep
+|
 |-- src/
 |   `-- imdb_sentiment/
 |       |-- cli.py
@@ -58,7 +92,139 @@ imdb-sentiment/
 |       |-- inference/
 |       |   `-- predict.py
 |       |-- models/
-|       |   `-- baseline.py
+|       |   |-- baseline.py
+|       |   |-- tfidf/
+|       |   |   `-- baseline.py
+|       |   |-- lstm/
+|       |   |   `-- model.py
+|       |   `-- transformer/
+|       |       `-- model.py
 |       `-- pipelines/
-|           `-- train.py
+|           |-- train.py
+|           `-- evaluation.py
+|
 `-- tests/
+    |-- test_baseline_model.py
+    |-- test_cli.py
+    |-- test_dataset.py
+    |-- test_evaluation.py
+    |-- test_inference.py
+    |-- test_preprocess.py
+    `-- test_train.py
+```
+
+---
+
+## Data ingestion behavior
+
+The dataset loader follows this order:
+
+1. try to load the IMDb dataset from Hugging Face
+2. if network access fails, try local CSV fallback files
+3. validate that both `train` and `test` splits exist
+4. validate that each split contains `text` and `label`
+
+Expected fallback files:
+
+- `data/raw/imdb_train.csv`
+- `data/raw/imdb_test.csv`
+
+Expected CSV schema:
+
+```text
+text,label
+This movie was great,1
+This movie was terrible,0
+```
+
+---
+
+## Environment
+
+The committed baseline artifact was created with `scikit-learn 1.6.1`.
+
+If you want to run inference on the tracked `baseline.joblib`, use the local project environment:
+
+```powershell
+.\.venv\Scripts\python -c "import sklearn; print(sklearn.__version__)"
+```
+
+Expected output:
+
+```text
+1.6.1
+```
+
+If the runtime version does not match the artifact version, the inference layer now fails fast with a clear `RuntimeError` instead of silently continuing.
+
+---
+
+## CLI usage
+
+Train the baseline:
+
+```powershell
+$env:PYTHONPATH="src"
+python -m imdb_sentiment.cli train --config configs/baseline.yaml
+```
+
+Run inference with a saved model:
+
+```powershell
+$env:PYTHONPATH="src"
+python -m imdb_sentiment.cli predict --config configs/baseline.yaml --text "This movie was amazing." --text "This film was awful."
+```
+
+Expected output shape:
+
+```json
+{"predictions": [1, 0]}
+```
+
+---
+
+## Baseline artifacts
+
+Current tracked baseline files:
+
+- `artifacts/models/baseline.joblib`
+- `artifacts/reports/metrics.json`
+
+Current tracked baseline metrics:
+
+```json
+{
+  "accuracy": 0.8976,
+  "precision": 0.8994391025641025,
+  "recall": 0.8958499600957701,
+  "f1": 0.897640943622551
+}
+```
+
+---
+
+## Evaluation
+
+Test-set evaluation lives in `src/imdb_sentiment/pipelines/evaluation.py`.
+
+Current evaluation flow:
+
+1. load a saved model
+2. load the IMDb dataset
+3. score the test split
+4. write test metrics to `artifacts/reports/test_metrics.json`
+
+---
+
+## Verification
+
+Useful checks:
+
+```powershell
+$env:PYTHONPATH="src"
+python -m pytest tests/test_dataset.py -q
+python -m pytest tests/test_inference.py -q
+python -m pytest tests/test_cli.py -q
+python -m pytest tests/test_evaluation.py -q
+python -m pytest -q
+```

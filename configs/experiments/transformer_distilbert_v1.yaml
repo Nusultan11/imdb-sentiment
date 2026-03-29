@@ -1,0 +1,11 @@
+seed: 42
+
+paths:
+  model_output: artifacts/experiments/transformer/distilbert_v1/checkpoint
+  metrics_output: artifacts/experiments/transformer/distilbert_v1/val_metrics.json
+
+model:
+  type: distilbert
+  max_features: 0
+  ngram_range: [1, 1]
+  max_iter: 3

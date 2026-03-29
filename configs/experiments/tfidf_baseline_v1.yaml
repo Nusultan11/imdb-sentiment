@@ -2,7 +2,7 @@ seed: 42
 
 paths:
   model_output: artifacts/experiments/tfidf/baseline_v1/model.joblib
-  metrics_output: artifacts/experiments/tfidf/baseline_v1/validation_metrics.json
+  metrics_output: artifacts/experiments/tfidf/baseline_v1/val_metrics.json
 
 model:
   type: logistic_regression

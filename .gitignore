@@ -13,6 +13,7 @@ data/interim/*
 data/processed/*
 artifacts/models/*
 artifacts/reports/*
+artifacts/cli_smoke/*
 
 !data/raw/.gitkeep
 !data/interim/.gitkeep
