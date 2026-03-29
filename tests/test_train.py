@@ -1,6 +1,8 @@
 from pathlib import Path
 import json
 
+from datasets import Dataset, DatasetDict
+
 import imdb_sentiment.pipelines.train as train_module
 from imdb_sentiment.settings import load_config
 
@@ -24,22 +26,38 @@ def test_run_training_returns_accuracy(tmp_path: Path, monkeypatch) -> None:
         encoding="utf-8",
     )
 
-    fake_dataset = {
-        "train": {
-            "text": ["great movie", "excellent plot", "bad acting", "terrible ending"],
-            "label": [1, 1, 0, 0],
-        },
-        "test": {
-            "text": ["loved it", "hated it"],
-            "label": [1, 0],
-        },
-    }
-    monkeypatch.setattr(train_module.dataset_module, "load_imdb_dataset", lambda: fake_dataset)
+    fake_dataset = DatasetDict(
+        {
+            "train": Dataset.from_dict(
+                {
+                    "text": [
+                        "great movie",
+                        "excellent plot",
+                        "amazing acting",
+                        "loved every scene",
+                        "bad acting",
+                        "terrible ending",
+                        "boring script",
+                        "hated every minute",
+                    ],
+                    "label": [1, 1, 1, 1, 0, 0, 0, 0],
+                }
+            ),
+            "test": Dataset.from_dict(
+                {
+                    "text": ["loved it", "hated it"],
+                    "label": [1, 0],
+                }
+            ),
+        }
+    )
+    monkeypatch.setattr(train_module, "load_imdb_dataset", lambda: fake_dataset)
 
     config = load_config(config_path)
     metrics = train_module.run_training(config)
 
     assert "accuracy" in metrics
+    assert {"accuracy", "precision", "recall", "f1"} <= metrics.keys()
     assert 0.0 <= metrics["accuracy"] <= 1.0
     assert config.paths.model_output.exists()
     assert config.paths.metrics_output.exists()
