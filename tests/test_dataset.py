@@ -43,5 +43,5 @@ def test_load_imdb_dataset_raises_readable_error_when_all_sources_fail(monkeypat
 
     monkeypatch.setattr(dataset_module, "hf_load_dataset", _raise_error)
 
-    with pytest.raises(RuntimeError, match="local CSV fallback"):
+    with pytest.raises(RuntimeError, match="Failed to load IMDb dataset from both sources"):
         dataset_module.load_imdb_dataset()
