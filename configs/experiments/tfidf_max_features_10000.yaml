@@ -1,8 +1,13 @@
+experiment:
+  family: tfidf
+  name: max_features_10000
+
 seed: 42
 
 paths:
   model_output: artifacts/experiments/tfidf/max_features_10000/model.joblib
-  metrics_output: artifacts/experiments/tfidf/max_features_10000/val_metrics.json
+  val_metrics_output: artifacts/experiments/tfidf/max_features_10000/val_metrics.json
+  test_metrics_output: artifacts/experiments/tfidf/max_features_10000/test_metrics.json
 
 model:
   type: logistic_regression

@@ -1,8 +1,13 @@
+experiment:
+  family: transformer
+  name: distilbert_v1
+
 seed: 42
 
 paths:
   model_output: artifacts/experiments/transformer/distilbert_v1/checkpoint
-  metrics_output: artifacts/experiments/transformer/distilbert_v1/val_metrics.json
+  val_metrics_output: artifacts/experiments/transformer/distilbert_v1/val_metrics.json
+  test_metrics_output: artifacts/experiments/transformer/distilbert_v1/test_metrics.json
 
 model:
   type: distilbert

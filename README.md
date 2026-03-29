@@ -2,25 +2,30 @@
 
 Experiment-ready ML project for sentiment analysis on IMDb reviews.
 
-The repository keeps a clean, stable **TF-IDF + Logistic Regression** baseline while also providing a scaffold for future **TF-IDF**, **LSTM**, and **transformer** experiments. The current tracked baseline includes:
+The repository keeps a clean **TF-IDF + Logistic Regression** baseline and separates the workflow into:
 
-- a saved model artifact in `artifacts/models/baseline.joblib`
-- tracked baseline metrics in `artifacts/reports/metrics.json`
-- CLI commands for training and inference
-- an evaluation pipeline for test-set scoring
+- `train`: fit on the IMDb training split and report validation metrics from an internal train/validation split
+- `predict`: run local inference with a saved model artifact
+- `evaluate`: score a saved model on the IMDb test split and write test metrics separately
+
+This separation keeps the baseline honest:
+
+- no fitting on the test split
+- no leakage from test-time evaluation into training-time metrics
+- explicit experiment metadata in YAML configs
 
 ---
 
 ## Features
 
 - clean `src/` project layout
-- YAML-based configuration
-- offline-capable dataset loading with Hugging Face first and local CSV fallback second
+- YAML-based configuration with experiment metadata
 - deterministic TF-IDF preprocessing inside the sklearn pipeline
 - fail-fast model loading when `scikit-learn` versions do not match
-- CLI entrypoints for both `train` and `predict`
+- Hugging Face first, local CSV fallback second for dataset loading
+- CLI entrypoints for `train`, `predict`, and `evaluate`
 - experiment config scaffolds for TF-IDF, LSTM, and transformer work
-- tracked baseline artifacts for reproducible local inference
+- GitHub Actions CI for `ruff` and `pytest`
 
 ---
 
@@ -32,6 +37,9 @@ imdb-sentiment/
 |-- AGENTS.md
 |-- .gitignore
 |-- pyproject.toml
+|-- .github/
+|   `-- workflows/
+|       `-- ci.yml
 |
 |-- configs/
 |   |-- baseline.yaml
@@ -59,11 +67,9 @@ imdb-sentiment/
 |
 |-- artifacts/
 |   |-- models/
-|   |   |-- .gitkeep
-|   |   `-- baseline.joblib
+|   |   `-- .gitkeep
 |   |-- reports/
-|   |   |-- .gitkeep
-|   |   `-- metrics.json
+|   |   `-- .gitkeep
 |   `-- experiments/
 |       |-- tfidf/
 |       |   |-- .gitkeep
@@ -115,6 +121,39 @@ imdb-sentiment/
 
 ---
 
+## Configuration
+
+Each config now carries experiment identity as well as separate artifact paths for validation and test outputs.
+
+Example from `configs/baseline.yaml`:
+
+```yaml
+experiment:
+  family: tfidf
+  name: baseline
+
+seed: 42
+
+paths:
+  model_output: artifacts/models/baseline.joblib
+  val_metrics_output: artifacts/reports/val_metrics.json
+  test_metrics_output: artifacts/reports/test_metrics.json
+
+model:
+  type: logistic_regression
+  max_features: 20000
+  ngram_range: [1, 2]
+  max_iter: 1000
+```
+
+Why this shape is useful:
+
+- `experiment.family` and `experiment.name` make runs easier to organize
+- validation and test metrics no longer overwrite each other
+- experiment configs can scale without reusing one flat baseline schema forever
+
+---
+
 ## Data ingestion behavior
 
 The dataset loader follows this order:
@@ -141,9 +180,9 @@ This movie was terrible,0
 
 ## Environment
 
-The committed baseline artifact was created with `scikit-learn 1.6.1`.
+The project pins `scikit-learn==1.6.1` in `pyproject.toml`.
 
-If you want to run inference on the tracked `baseline.joblib`, use the local project environment:
+If you want to run local inference on a saved `.joblib` artifact, use the project environment:
 
 ```powershell
 .\.venv\Scripts\python -c "import sklearn; print(sklearn.__version__)"
@@ -155,13 +194,13 @@ Expected output:
 1.6.1
 ```
 
-If the runtime version does not match the artifact version, the inference layer now fails fast with a clear `RuntimeError` instead of silently continuing.
+If the runtime version does not match the artifact version, the inference layer raises a clear `RuntimeError` instead of silently continuing.
 
 ---
 
 ## CLI usage
 
-Train the baseline:
+Train the baseline and write validation metrics:
 
 ```powershell
 $env:PYTHONPATH="src"
@@ -175,7 +214,14 @@ $env:PYTHONPATH="src"
 python -m imdb_sentiment.cli predict --config configs/baseline.yaml --text "This movie was amazing." --text "This film was awful."
 ```
 
-Expected output shape:
+Evaluate a saved model on the IMDb test split:
+
+```powershell
+$env:PYTHONPATH="src"
+python -m imdb_sentiment.cli evaluate --config configs/baseline.yaml
+```
+
+Expected prediction output shape:
 
 ```json
 {"predictions": [1, 0]}
@@ -183,48 +229,55 @@ Expected output shape:
 
 ---
 
-## Baseline artifacts
+## Training and evaluation semantics
 
-Current tracked baseline files:
+The repository now makes the metric split explicit:
 
-- `artifacts/models/baseline.joblib`
-- `artifacts/reports/metrics.json`
+- `train.py` fits on `dataset["train"]`
+- `train.py` creates an internal validation split from `dataset["train"]`
+- `train.py` writes validation metrics to `paths.val_metrics_output`
+- `evaluation.py` scores only `dataset["test"]`
+- `evaluation.py` writes test metrics to `paths.test_metrics_output`
 
-Current tracked baseline metrics:
-
-```json
-{
-  "accuracy": 0.8976,
-  "precision": 0.8994391025641025,
-  "recall": 0.8958499600957701,
-  "f1": 0.897640943622551
-}
-```
+This means the README, config schema, and runtime logic now describe the same system.
 
 ---
 
-## Evaluation
+## Artifacts policy
 
-Test-set evaluation lives in `src/imdb_sentiment/pipelines/evaluation.py`.
+Model and metrics files are treated as local outputs, not as committed source files.
 
-Current evaluation flow:
+Typical local outputs:
 
-1. load a saved model
-2. load the IMDb dataset
-3. score the test split
-4. write test metrics to `artifacts/reports/test_metrics.json`
+- `artifacts/models/baseline.joblib`
+- `artifacts/reports/val_metrics.json`
+- `artifacts/reports/test_metrics.json`
+- `artifacts/experiments/...`
+
+The repository keeps placeholder directories with `.gitkeep`, but real trained binaries and report files are ignored by git.
+
+---
+
+## CI
+
+The repository includes GitHub Actions CI in `.github/workflows/ci.yml`.
+
+On each push to `master` and on pull requests, CI runs:
+
+1. dependency installation
+2. `ruff check .`
+3. `pytest -q`
 
 ---
 
 ## Verification
 
-Useful checks:
+Useful local checks:
 
 ```powershell
 $env:PYTHONPATH="src"
-python -m pytest tests/test_dataset.py -q
-python -m pytest tests/test_inference.py -q
-python -m pytest tests/test_cli.py -q
-python -m pytest tests/test_evaluation.py -q
 python -m pytest -q
+ruff check .
+python -m imdb_sentiment.cli train --config configs/baseline.yaml
+python -m imdb_sentiment.cli evaluate --config configs/baseline.yaml
 ```

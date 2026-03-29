@@ -12,9 +12,6 @@ from imdb_sentiment.inference.predict import load_model
 from imdb_sentiment.settings import AppConfig
 
 
-DEFAULT_TEST_METRICS_OUTPUT = Path("artifacts/reports/test_metrics.json")
-
-
 def _ensure_parent_dir(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -52,7 +49,7 @@ def _evaluate_predictions(y_true: list[int], y_pred: list[int]) -> dict[str, flo
 
 def run_evaluation(
     config: AppConfig,
-    output_path: str | Path = DEFAULT_TEST_METRICS_OUTPUT,
+    output_path: str | Path | None = None,
 ) -> dict[str, float]:
     model: Pipeline = load_model(config.paths.model_output)
 
@@ -64,7 +61,7 @@ def run_evaluation(
 
     metrics = _evaluate_predictions(y_test, y_pred)
 
-    output_path = Path(output_path)
-    _save_metrics(output_path, metrics)
+    resolved_output_path = config.paths.test_metrics_output if output_path is None else Path(output_path)
+    _save_metrics(resolved_output_path, metrics)
 
     return metrics

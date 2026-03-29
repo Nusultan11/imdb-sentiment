@@ -10,7 +10,14 @@ import yaml
 @dataclass(slots=True)
 class PathsConfig:
     model_output: Path
-    metrics_output: Path
+    val_metrics_output: Path
+    test_metrics_output: Path
+
+
+@dataclass(slots=True)
+class ExperimentConfig:
+    family: str
+    name: str
 
 
 @dataclass(slots=True)
@@ -23,6 +30,7 @@ class ModelConfig:
 
 @dataclass(slots=True)
 class AppConfig:
+    experiment: ExperimentConfig
     seed: int
     paths: PathsConfig
     model: ModelConfig
@@ -57,14 +65,24 @@ def load_config(path: str | Path = "configs/baseline.yaml") -> AppConfig:
     payload = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     payload = _require_dict(payload, "config")
 
+    experiment_payload = _require_dict(payload.get("experiment"), "experiment")
     paths_payload = _require_dict(payload.get("paths"), "paths")
     model_payload = _require_dict(payload.get("model"), "model")
 
     return AppConfig(
+        experiment=ExperimentConfig(
+            family=_require_str(experiment_payload.get("family"), "experiment.family"),
+            name=_require_str(experiment_payload.get("name"), "experiment.name"),
+        ),
         seed=_require_int(payload.get("seed"), "seed"),
         paths=PathsConfig(
             model_output=Path(_require_str(paths_payload.get("model_output"), "paths.model_output")),
-            metrics_output=Path(_require_str(paths_payload.get("metrics_output"), "paths.metrics_output")),
+            val_metrics_output=Path(
+                _require_str(paths_payload.get("val_metrics_output"), "paths.val_metrics_output")
+            ),
+            test_metrics_output=Path(
+                _require_str(paths_payload.get("test_metrics_output"), "paths.test_metrics_output")
+            ),
         ),
         model=ModelConfig(
             type=_require_str(model_payload.get("type"), "model.type"),

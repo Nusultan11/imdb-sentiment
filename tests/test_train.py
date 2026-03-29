@@ -12,10 +12,14 @@ def test_run_training_returns_accuracy(tmp_path: Path, monkeypatch) -> None:
     config_path.write_text(
         "\n".join(
             [
+                "experiment:",
+                "  family: tfidf",
+                "  name: baseline_test",
                 "seed: 42",
                 "paths:",
                 f"  model_output: {tmp_path.as_posix()}/artifacts/models/baseline.joblib",
-                f"  metrics_output: {tmp_path.as_posix()}/artifacts/reports/metrics.json",
+                f"  val_metrics_output: {tmp_path.as_posix()}/artifacts/reports/val_metrics.json",
+                f"  test_metrics_output: {tmp_path.as_posix()}/artifacts/reports/test_metrics.json",
                 "model:",
                 "  type: logistic_regression",
                 "  max_features: 100",
@@ -60,6 +64,7 @@ def test_run_training_returns_accuracy(tmp_path: Path, monkeypatch) -> None:
     assert {"accuracy", "precision", "recall", "f1"} <= metrics.keys()
     assert 0.0 <= metrics["accuracy"] <= 1.0
     assert config.paths.model_output.exists()
-    assert config.paths.metrics_output.exists()
-    saved_metrics = json.loads(config.paths.metrics_output.read_text(encoding="utf-8"))
+    assert config.paths.val_metrics_output.exists()
+    assert not config.paths.test_metrics_output.exists()
+    saved_metrics = json.loads(config.paths.val_metrics_output.read_text(encoding="utf-8"))
     assert saved_metrics == metrics

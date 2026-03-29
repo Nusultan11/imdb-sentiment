@@ -1,41 +1,58 @@
 # Experiments
 
-This document tracks the current experiment-oriented project scaffold.
+This document tracks the experiment-oriented scaffold for the repository.
 
-## Active baseline
+## Baseline contract
 
-The tracked baseline artifact in the repository is:
+The current baseline is:
 
 ```text
 family=tfidf
-name=baseline_v1
+name=baseline
 model=TF-IDF + Logistic Regression
 seed=42
-artifact=artifacts/models/baseline.joblib
-metrics=artifacts/reports/metrics.json
+config=configs/baseline.yaml
 ```
 
-Current tracked metrics:
+The baseline repository contract is:
 
-```text
-accuracy=0.8976
-precision=0.8994391025641025
-recall=0.8958499600957701
-f1=0.897640943622551
+- model artifacts are local outputs, not tracked source files
+- validation metrics are written separately from test metrics
+- test-set scoring happens only through the evaluation flow
+
+## Config schema
+
+Every experiment config should include:
+
+```yaml
+experiment:
+  family: ...
+  name: ...
+
+seed: 42
+
+paths:
+  model_output: ...
+  val_metrics_output: ...
+  test_metrics_output: ...
+
+model:
+  type: ...
 ```
 
-## Experiment configs
+This keeps experiment identity, validation outputs, and test outputs explicit.
 
-Available experiment config scaffolds:
+## Available config scaffolds
 
+- `configs/baseline.yaml`
 - `configs/experiments/tfidf_baseline_v1.yaml`
 - `configs/experiments/tfidf_max_features_10000.yaml`
 - `configs/experiments/lstm_baseline_v1.yaml`
 - `configs/experiments/transformer_distilbert_v1.yaml`
 
-## Expected experiment outputs
+## Expected output structure
 
-Each experiment family stores outputs under `artifacts/experiments/`:
+Typical output files:
 
 - TF-IDF:
   - `model.joblib`
@@ -53,10 +70,17 @@ Each experiment family stores outputs under `artifacts/experiments/`:
   - `test_metrics.json`
   - `config_snapshot.yaml`
 
-## Evaluation flow
+## Workflow
 
-Current baseline workflow:
+Baseline and experiment workflow:
 
 1. train with `python -m imdb_sentiment.cli train --config ...`
-2. predict with `python -m imdb_sentiment.cli predict --config ... --text ...`
-3. evaluate with `imdb_sentiment.pipelines.evaluation.run_evaluation(...)`
+2. run local predictions with `python -m imdb_sentiment.cli predict --config ... --text ...`
+3. score the test split with `python -m imdb_sentiment.cli evaluate --config ...`
+
+## CI guardrails
+
+The repository now checks the workflow automatically in `.github/workflows/ci.yml`:
+
+- `ruff check .`
+- `pytest -q`

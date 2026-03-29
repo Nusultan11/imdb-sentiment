@@ -29,10 +29,10 @@ def _save_artifacts(
     metrics: dict[str, float],
 ) -> None:
     _ensure_parent_dir(config.paths.model_output)
-    _ensure_parent_dir(config.paths.metrics_output)
+    _ensure_parent_dir(config.paths.val_metrics_output)
 
     joblib.dump(model, config.paths.model_output)
-    config.paths.metrics_output.write_text(
+    config.paths.val_metrics_output.write_text(
         json.dumps(metrics, indent=2),
         encoding="utf-8",
     )
@@ -43,9 +43,7 @@ def run_training(config: AppConfig) -> dict[str, float]:
         raise ValueError(f"Unsupported model.type: {config.model.type}")
 
     dataset = load_imdb_dataset()
-
     full_train = dataset["train"]
-    test_split = dataset["test"]  # пока сохраняем, но не используем на этом шаге
 
     train_val_split = full_train.train_test_split(
         test_size=0.2,
