@@ -1,0 +1,16 @@
+experiment:
+  family: tfidf
+  name: tuned_v2_final
+
+seed: 42
+
+paths:
+  model_output: artifacts/experiments/tfidf/tuned_v2_final/model.joblib
+  val_metrics_output: artifacts/experiments/tfidf/tuned_v2_final/val_metrics.json
+  test_metrics_output: artifacts/experiments/tfidf/tuned_v2_final/test_metrics.json
+
+model:
+  type: logistic_regression
+  max_features: 38000
+  ngram_range: [1, 2]
+  max_iter: 1000

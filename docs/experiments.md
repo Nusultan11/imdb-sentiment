@@ -47,6 +47,7 @@ This keeps experiment identity, validation outputs, and test outputs explicit.
 - `configs/baseline.yaml`
 - `configs/experiments/tfidf_baseline_v1.yaml`
 - `configs/experiments/tfidf_max_features_10000.yaml`
+- `configs/experiments/tfidf_tuned_v2_final.yaml`
 - `configs/experiments/lstm_baseline_v1.yaml`
 - `configs/experiments/transformer_distilbert_v1.yaml`
 
