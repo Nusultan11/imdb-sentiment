@@ -48,6 +48,13 @@ def _require_int(value: Any, name: str) -> int:
     return value
 
 
+def _require_positive_int(value: Any, name: str) -> int:
+    integer_value = _require_int(value, name)
+    if integer_value < 1:
+        raise ValueError(f"{name} must be at least 1")
+    return integer_value
+
+
 def _require_str(value: Any, name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{name} must be a non-empty string")
@@ -91,8 +98,8 @@ def load_config(path: str | Path = "configs/baseline.yaml") -> AppConfig:
         ),
         model=ModelConfig(
             type=_require_str(model_payload.get("type"), "model.type"),
-            max_features=_require_int(model_payload.get("max_features"), "model.max_features"),
+            max_features=_require_positive_int(model_payload.get("max_features"), "model.max_features"),
             ngram_range=_require_ngram_range(model_payload.get("ngram_range"), "model.ngram_range"),
-            max_iter=_require_int(model_payload.get("max_iter"), "model.max_iter"),
+            max_iter=_require_positive_int(model_payload.get("max_iter"), "model.max_iter"),
         ),
     )
