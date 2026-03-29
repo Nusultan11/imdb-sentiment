@@ -19,4 +19,6 @@ artifacts/reports/*
 !data/processed/.gitkeep
 !artifacts/models/.gitkeep
 !artifacts/reports/.gitkeep
+!artifacts/models/baseline.joblib
+!artifacts/reports/metrics.json
 !notebooks/.gitkeep
