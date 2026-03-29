@@ -57,7 +57,12 @@ def _require_str(value: Any, name: str) -> str:
 def _require_ngram_range(value: Any, name: str) -> tuple[int, int]:
     if not isinstance(value, list) or len(value) != 2 or not all(isinstance(v, int) for v in value):
         raise ValueError(f"{name} must be a list of two integers")
-    return value[0], value[1]
+    min_n, max_n = value
+    if min_n < 1:
+        raise ValueError(f"{name} minimum must be at least 1")
+    if min_n > max_n:
+        raise ValueError(f"{name} minimum must be less than or equal to maximum")
+    return min_n, max_n
 
 
 def load_config(path: str | Path = "configs/baseline.yaml") -> AppConfig:
