@@ -15,8 +15,8 @@ paths:
 
 model:
   type: lstm
-  vocab_size: 20000
-  max_length: 256
+  vocab_size: 30000
+  max_length: 512
   embedding_dim: 128
   hidden_dim: 128
   batch_size: 32
