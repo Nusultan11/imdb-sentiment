@@ -159,6 +159,7 @@ def test_run_evaluation_supports_lstm_checkpoints(tmp_path: Path, monkeypatch) -
                 "  max_length: 6",
                 "  embedding_dim: 8",
                 "  hidden_dim: 6",
+                "  bidirectional: false",
                 "  batch_size: 2",
                 "  epochs: 2",
                 "  dropout: 0.2",

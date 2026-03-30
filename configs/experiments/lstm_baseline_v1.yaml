@@ -18,6 +18,7 @@ model:
   max_length: 512
   embedding_dim: 128
   hidden_dim: 128
+  bidirectional: false
   batch_size: 32
   epochs: 5
   dropout: 0.3

@@ -42,6 +42,7 @@ class LSTMModelConfig:
     epochs: int
     dropout: float
     lr: float
+    bidirectional: bool
 
 
 @dataclass(slots=True)
@@ -112,6 +113,12 @@ def _require_str(value: Any, name: str) -> str:
     return value
 
 
+def _require_bool(value: Any, name: str) -> bool:
+    if not isinstance(value, bool):
+        raise ValueError(f"{name} must be a boolean")
+    return value
+
+
 def _require_ngram_range(value: Any, name: str) -> tuple[int, int]:
     if not isinstance(value, list) or len(value) != 2 or not all(isinstance(v, int) for v in value):
         raise ValueError(f"{name} must be a list of two integers")
@@ -165,6 +172,7 @@ def _load_lstm_model_config(model_payload: dict[str, Any]) -> LSTMModelConfig:
         epochs=_require_positive_int(model_payload.get("epochs"), "model.epochs"),
         dropout=_require_probability(model_payload.get("dropout"), "model.dropout"),
         lr=_require_positive_float(model_payload.get("lr"), "model.lr"),
+        bidirectional=_require_bool(model_payload.get("bidirectional"), "model.bidirectional"),
     )
 
 

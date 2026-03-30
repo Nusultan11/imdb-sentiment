@@ -98,6 +98,7 @@ def build_lstm_training_config_payload(
             "epochs": model_config.epochs,
             "dropout": model_config.dropout,
             "lr": model_config.lr,
+            "bidirectional": model_config.bidirectional,
         },
         "artifacts": {
             "model_output": artifact_contract.model_output.name,

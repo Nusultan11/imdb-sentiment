@@ -92,6 +92,7 @@ def test_load_config_supports_lstm_family_specific_fields(tmp_path: Path) -> Non
                 "  max_length: 64",
                 "  embedding_dim: 128",
                 "  hidden_dim: 128",
+                "  bidirectional: false",
                 "  batch_size: 32",
                 "  epochs: 5",
                 "  dropout: 0.3",
@@ -112,6 +113,7 @@ def test_load_config_supports_lstm_family_specific_fields(tmp_path: Path) -> Non
     assert config.model.max_length == 64
     assert config.model.embedding_dim == 128
     assert config.model.hidden_dim == 128
+    assert config.model.bidirectional is False
     assert config.model.batch_size == 32
     assert config.model.epochs == 5
     assert config.model.dropout == 0.3
@@ -119,6 +121,139 @@ def test_load_config_supports_lstm_family_specific_fields(tmp_path: Path) -> Non
     assert config.paths.model_output == tmp_path / "artifacts" / "models" / "model.pt"
     assert config.paths.val_metrics_output == tmp_path / "artifacts" / "reports" / "val_metrics.json"
     assert config.paths.test_metrics_output == tmp_path / "artifacts" / "reports" / "test_metrics.json"
+
+
+def test_load_config_supports_bidirectional_lstm_experiment_field(tmp_path: Path) -> None:
+    config_path = tmp_path / "lstm_bidirectional.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "experiment:",
+                "  family: lstm",
+                "  name: bidirectional_test",
+                "seed: 42",
+                "paths:",
+                f"  model_output: {(tmp_path / 'artifacts' / 'models' / 'model.pt').as_posix()}",
+                f"  val_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'val_metrics.json').as_posix()}",
+                f"  test_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'test_metrics.json').as_posix()}",
+                "model:",
+                "  type: lstm",
+                "  vocab_size: 30000",
+                "  max_length: 512",
+                "  embedding_dim: 128",
+                "  hidden_dim: 128",
+                "  bidirectional: true",
+                "  batch_size: 32",
+                "  epochs: 5",
+                "  dropout: 0.3",
+                "  lr: 0.001",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_config(config_path)
+
+    assert isinstance(config.model, LSTMModelConfig)
+    assert config.model.bidirectional is True
+
+
+def test_load_config_rejects_missing_bidirectional_field(tmp_path: Path) -> None:
+    config_path = tmp_path / "lstm_missing_bidirectional.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "experiment:",
+                "  family: lstm",
+                "  name: missing_bidirectional_test",
+                "seed: 42",
+                "paths:",
+                f"  model_output: {(tmp_path / 'artifacts' / 'models' / 'model.pt').as_posix()}",
+                f"  val_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'val_metrics.json').as_posix()}",
+                f"  test_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'test_metrics.json').as_posix()}",
+                "model:",
+                "  type: lstm",
+                "  vocab_size: 30000",
+                "  max_length: 512",
+                "  embedding_dim: 128",
+                "  hidden_dim: 128",
+                "  batch_size: 32",
+                "  epochs: 5",
+                "  dropout: 0.3",
+                "  lr: 0.001",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="model.bidirectional must be a boolean"):
+        load_config(config_path)
+
+
+def test_load_config_rejects_non_boolean_bidirectional_integer(tmp_path: Path) -> None:
+    config_path = tmp_path / "lstm_bidirectional_invalid_int.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "experiment:",
+                "  family: lstm",
+                "  name: bidirectional_test",
+                "seed: 42",
+                "paths:",
+                f"  model_output: {(tmp_path / 'artifacts' / 'models' / 'model.pt').as_posix()}",
+                f"  val_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'val_metrics.json').as_posix()}",
+                f"  test_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'test_metrics.json').as_posix()}",
+                "model:",
+                "  type: lstm",
+                "  vocab_size: 30000",
+                "  max_length: 512",
+                "  embedding_dim: 128",
+                "  hidden_dim: 128",
+                "  bidirectional: 1",
+                "  batch_size: 32",
+                "  epochs: 5",
+                "  dropout: 0.3",
+                "  lr: 0.001",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="model.bidirectional must be a boolean"):
+        load_config(config_path)
+
+
+def test_load_config_rejects_non_boolean_bidirectional_string(tmp_path: Path) -> None:
+    config_path = tmp_path / "lstm_bidirectional_invalid_string.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "experiment:",
+                "  family: lstm",
+                "  name: bidirectional_test",
+                "seed: 42",
+                "paths:",
+                f"  model_output: {(tmp_path / 'artifacts' / 'models' / 'model.pt').as_posix()}",
+                f"  val_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'val_metrics.json').as_posix()}",
+                f"  test_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'test_metrics.json').as_posix()}",
+                "model:",
+                "  type: lstm",
+                "  vocab_size: 30000",
+                "  max_length: 512",
+                "  embedding_dim: 128",
+                "  hidden_dim: 128",
+                "  bidirectional: \"yes\"",
+                "  batch_size: 32",
+                "  epochs: 5",
+                "  dropout: 0.3",
+                "  lr: 0.001",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="model.bidirectional must be a boolean"):
+        load_config(config_path)
 
 
 def test_load_config_supports_transformer_family_specific_fields(tmp_path: Path) -> None:
@@ -173,6 +308,7 @@ def test_load_config_rejects_invalid_lstm_dropout(tmp_path: Path) -> None:
                 "  max_length: 64",
                 "  embedding_dim: 128",
                 "  hidden_dim: 128",
+                "  bidirectional: false",
                 "  batch_size: 32",
                 "  epochs: 5",
                 "  dropout: 1.0",
@@ -205,6 +341,7 @@ def test_load_config_rejects_non_lstm_model_type_for_lstm_family(tmp_path: Path)
                 "  max_length: 64",
                 "  embedding_dim: 128",
                 "  hidden_dim: 128",
+                "  bidirectional: false",
                 "  batch_size: 32",
                 "  epochs: 5",
                 "  dropout: 0.3",

@@ -1,0 +1,25 @@
+experiment:
+  family: lstm
+  name: bidirectional_v1
+
+seed: 42
+
+paths:
+  model_output: artifacts/experiments/lstm/bidirectional_v1/model.pt
+  val_metrics_output: artifacts/experiments/lstm/bidirectional_v1/val_metrics.json
+  test_metrics_output: artifacts/experiments/lstm/bidirectional_v1/test_metrics.json
+# Keep bidirectional LSTM artifacts flat in this directory:
+# runtime files -> model.pt, vocab.json, training_config.json, val_metrics.json, test_metrics.json
+# optional export files -> bidirectional experiment zips if you create them later
+
+model:
+  type: lstm
+  vocab_size: 30000
+  max_length: 512
+  embedding_dim: 128
+  hidden_dim: 128
+  bidirectional: true
+  batch_size: 32
+  epochs: 5
+  dropout: 0.3
+  lr: 0.001

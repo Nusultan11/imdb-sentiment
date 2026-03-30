@@ -56,6 +56,7 @@ def test_run_lstm_training_saves_best_checkpoint_and_metrics(
                 "  max_length: 6",
                 "  embedding_dim: 8",
                 "  hidden_dim: 6",
+                "  bidirectional: false",
                 "  batch_size: 2",
                 "  epochs: 2",
                 "  dropout: 0.2",
@@ -126,6 +127,7 @@ def test_run_lstm_training_saves_best_checkpoint_and_metrics(
         "epochs": 2,
         "dropout": 0.2,
         "lr": 0.01,
+        "bidirectional": False,
     }
     assert saved_training_config["artifacts"] == {
         "model_output": "model.pt",
@@ -159,3 +161,88 @@ def test_run_lstm_training_saves_best_checkpoint_and_metrics(
     assert checkpoint["family"] == "lstm"
     assert checkpoint["name"] == "baseline_test"
     assert "<pad>" in checkpoint["vocabulary"]
+
+
+def test_run_lstm_training_builds_model_from_bidirectional_config(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config_path = tmp_path / "lstm_bidirectional.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "experiment:",
+                "  family: lstm",
+                "  name: bidirectional_test",
+                "seed: 42",
+                "paths:",
+                f"  model_output: {(tmp_path / 'artifacts' / 'models' / 'model.pt').as_posix()}",
+                f"  val_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'val_metrics.json').as_posix()}",
+                f"  test_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'test_metrics.json').as_posix()}",
+                "model:",
+                "  type: lstm",
+                "  vocab_size: 50",
+                "  max_length: 6",
+                "  embedding_dim: 8",
+                "  hidden_dim: 6",
+                "  bidirectional: true",
+                "  batch_size: 2",
+                "  epochs: 1",
+                "  dropout: 0.2",
+                "  lr: 0.01",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    fake_dataset = DatasetDict(
+        {
+            "train": Dataset.from_dict(
+                {
+                    "text": ["great movie", "bad film", "loved it", "hated it"],
+                    "label": [1, 0, 1, 0],
+                }
+            ),
+            "test": Dataset.from_dict(
+                {
+                    "text": ["great film", "awful film"],
+                    "label": [1, 0],
+                }
+            ),
+        }
+    )
+    monkeypatch.setattr(train_lstm_module, "load_imdb_dataset", lambda: fake_dataset)
+
+    class _FakeVocabulary:
+        token_to_id = {"<pad>": 0, "<unk>": 1}
+
+    monkeypatch.setattr(train_lstm_module, "build_lstm_vocabulary", lambda texts, max_size: _FakeVocabulary())
+    monkeypatch.setattr(train_lstm_module, "build_lstm_dataloader", lambda **kwargs: [("unused", "unused")])
+
+    captured: dict[str, object] = {}
+
+    def _fake_build_lstm_model(model_config):
+        captured["bidirectional"] = model_config.bidirectional
+        return torch.nn.Linear(1, 1)
+
+    monkeypatch.setattr(train_lstm_module, "build_lstm_model", _fake_build_lstm_model)
+    monkeypatch.setattr(train_lstm_module, "_train_one_epoch", lambda **kwargs: 0.1)
+    monkeypatch.setattr(
+        train_lstm_module,
+        "_evaluate_lstm_model",
+        lambda **kwargs: {
+            "loss": 0.2,
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+        },
+    )
+    monkeypatch.setattr(train_lstm_module, "_save_best_lstm_artifacts", lambda **kwargs: None)
+    monkeypatch.setattr(train_lstm_module, "_save_training_history", lambda **kwargs: None)
+
+    config = load_config(config_path)
+    metrics = train_lstm_module.run_lstm_training(config)
+
+    assert captured["bidirectional"] is True
+    assert metrics["f1"] == 1.0

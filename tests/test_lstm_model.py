@@ -28,6 +28,7 @@ def _write_lstm_config(tmp_path: Path) -> Path:
                 "  max_length: 32",
                 "  embedding_dim: 16",
                 "  hidden_dim: 12",
+                "  bidirectional: false",
                 "  batch_size: 4",
                 "  epochs: 2",
                 "  dropout: 0.3",
@@ -49,6 +50,38 @@ def test_build_lstm_model_returns_sentiment_lstm(tmp_path: Path) -> None:
     assert model.embedding.embedding_dim == 16
     assert model.embedding.padding_idx == 0
     assert model.encoder.hidden_size == 12
+
+
+def test_sentiment_lstm_encoder_supports_bidirectional_mode() -> None:
+    model = SentimentLSTM(
+        vocab_size=100,
+        embedding_dim=16,
+        hidden_dim=12,
+        dropout=0.3,
+        bidirectional=True,
+        padding_idx=0,
+    )
+
+    assert model.bidirectional is True
+    assert model.encoder.bidirectional is True
+    assert model.classifier.in_features == 24
+
+
+def test_sentiment_lstm_forward_supports_bidirectional_hidden_concatenation() -> None:
+    model = SentimentLSTM(
+        vocab_size=100,
+        embedding_dim=16,
+        hidden_dim=12,
+        dropout=0.3,
+        bidirectional=True,
+        padding_idx=0,
+    )
+    token_ids = torch.randint(low=1, high=100, size=(3, 7))
+
+    logits = model(token_ids)
+
+    assert logits.shape == (3,)
+    assert logits.dtype == torch.float32
 
 
 def test_predict_logits_returns_one_logit_per_sequence(tmp_path: Path) -> None:

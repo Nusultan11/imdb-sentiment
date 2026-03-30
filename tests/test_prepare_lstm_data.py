@@ -31,6 +31,7 @@ def test_prepare_lstm_data_writes_train_val_test_and_metadata(
                 "  max_length: 64",
                 "  embedding_dim: 128",
                 "  hidden_dim: 128",
+                "  bidirectional: false",
                 "  batch_size: 32",
                 "  epochs: 5",
                 "  dropout: 0.3",

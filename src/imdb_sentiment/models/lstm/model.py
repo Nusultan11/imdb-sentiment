@@ -27,10 +27,12 @@ if nn is not None:
             embedding_dim: int,
             hidden_dim: int,
             dropout: float,
+            bidirectional: bool,
             padding_idx: int = 0,
         ) -> None:
             super().__init__()
             self.padding_idx = padding_idx
+            self.bidirectional = bidirectional
             self.embedding = nn.Embedding(
                 num_embeddings=vocab_size,
                 embedding_dim=embedding_dim,
@@ -40,9 +42,11 @@ if nn is not None:
                 input_size=embedding_dim,
                 hidden_size=hidden_dim,
                 batch_first=True,
+                bidirectional=bidirectional,
             )
+            classifier_input_dim = hidden_dim * 2 if bidirectional else hidden_dim
             self.dropout = nn.Dropout(p=dropout)
-            self.classifier = nn.Linear(hidden_dim, 1)
+            self.classifier = nn.Linear(classifier_input_dim, 1)
 
         def forward(self, token_ids: Tensor) -> Tensor:
             embedded_tokens = self.embedding(token_ids)
@@ -54,7 +58,12 @@ if nn is not None:
                 enforce_sorted=False,
             )
             _, (hidden_state, _) = self.encoder(packed_tokens)
-            last_hidden_state = hidden_state[-1]
+            if self.bidirectional:
+                forward_hidden = hidden_state[-2]
+                backward_hidden = hidden_state[-1]
+                last_hidden_state = torch.cat([forward_hidden, backward_hidden], dim=1)
+            else:
+                last_hidden_state = hidden_state[-1]
             dropped_hidden_state = self.dropout(last_hidden_state)
             logits = self.classifier(dropped_hidden_state)
             return logits.squeeze(dim=-1)
@@ -91,6 +100,7 @@ def build_lstm_model(config: LSTMModelConfig) -> SentimentLSTM:
         embedding_dim=config.embedding_dim,
         hidden_dim=config.hidden_dim,
         dropout=config.dropout,
+        bidirectional=config.bidirectional,
         padding_idx=0,
     )
 

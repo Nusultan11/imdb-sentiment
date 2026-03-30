@@ -90,6 +90,7 @@ def test_run_training_routes_lstm_family_to_lstm_trainer(tmp_path: Path, monkeyp
                 "  max_length: 32",
                 "  embedding_dim: 16",
                 "  hidden_dim: 16",
+                "  bidirectional: false",
                 "  batch_size: 2",
                 "  epochs: 1",
                 "  dropout: 0.3",
