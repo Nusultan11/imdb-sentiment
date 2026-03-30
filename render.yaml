@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: imdb-sentiment-web
+    runtime: python
+    plan: free
+    buildCommand: pip install --upgrade pip && pip install . && python -m imdb_sentiment.cli train --config configs/baseline.yaml
+    startCommand: python -m imdb_sentiment.render_entry
+    healthCheckPath: /
+    envVars:
+      - key: IMDB_CONFIG
+        value: configs/baseline.yaml
