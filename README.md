@@ -6,7 +6,7 @@ The repository keeps a clean **TF-IDF + Logistic Regression** baseline and separ
 
 - `train`: fit on the IMDb training split and report validation metrics from an internal train/validation split
 - `prepare-data`: export explicit `train/val/test` files for LSTM experiments
-- `predict`: run local inference with a saved TF-IDF model artifact
+- `predict`: run local inference with a saved family-specific model artifact
 - `evaluate`: score a saved model on the IMDb test split and write test metrics separately
 
 This separation keeps the baseline honest:
@@ -23,8 +23,10 @@ This separation keeps the baseline honest:
 - YAML-based configuration with experiment metadata and family-specific model fields
 - deterministic TF-IDF preprocessing inside the sklearn pipeline
 - LSTM text pipeline with tokenizer, vocabulary, token ids, padding, dataset, and dataloader
+- shared LSTM artifact contract for checkpoint sidecars and runtime loading
 - separate LSTM trainer with batch training, validation loop, and best-checkpoint saving
 - family-aware evaluation for TF-IDF artifacts and LSTM checkpoints
+- family-aware prediction for TF-IDF artifacts and LSTM checkpoints
 - fail-fast model loading when `scikit-learn` versions do not match
 - Hugging Face first, local CSV fallback second for dataset loading
 - CLI entrypoints for `train`, `prepare-data`, `predict`, and `evaluate`
@@ -97,6 +99,9 @@ imdb-sentiment/
 |   `-- imdb_sentiment/
 |       |-- cli.py
 |       |-- settings.py
+|       |-- artifacts/
+|       |   |-- __init__.py
+|       |   `-- lstm.py
 |       |-- data/
 |       |   |-- dataset.py
 |       |   `-- lstm.py
@@ -197,8 +202,15 @@ model:
 ```
 
 For the current local LSTM trainer, this config produces an artifact directory centered around `paths.model_output`.
-The trainer saves `model.pt` there directly and also writes `vocab.json` plus `training_config.json`
-next to it, while metrics stay separated into `val_metrics.json` and `test_metrics.json`.
+The standardized local contract is:
+
+- required for inference: `model.pt`, `vocab.json`, `training_config.json`
+- required for evaluation input: `model.pt`, `vocab.json`, `training_config.json`
+- written during training: `model.pt`, `vocab.json`, `training_config.json`, `val_metrics.json`
+- written during test evaluation: `test_metrics.json`
+
+`training_config.json` also serializes the expected artifact filenames so inference and evaluation can
+fail fast if the checkpoint directory no longer matches the expected LSTM bundle.
 
 ---
 
@@ -244,7 +256,7 @@ Install the project with dev tooling:
 .\.venv\Scripts\python -m pip install -e .[dev]
 ```
 
-If you want to run local inference on a saved `.joblib` artifact, use the project environment:
+If you want to run local inference on a saved artifact, use the project environment:
 
 ```powershell
 .\.venv\Scripts\python -c "import sklearn; print(sklearn.__version__)"
@@ -281,6 +293,13 @@ Run inference with a saved TF-IDF model:
 ```powershell
 $env:PYTHONPATH="src"
 python -m imdb_sentiment.cli predict --config configs/baseline.yaml --text "This movie was amazing." --text "This film was awful."
+```
+
+Run inference with a saved LSTM checkpoint bundle:
+
+```powershell
+$env:PYTHONPATH="src"
+python -m imdb_sentiment.cli predict --config configs/experiments/lstm_baseline_v1.yaml --text "This movie was amazing." --text "This film was awful."
 ```
 
 Evaluate a saved TF-IDF model on the IMDb test split:
@@ -338,7 +357,7 @@ Current implementation status:
 - LSTM local data preparation pipeline is implemented
 - LSTM local training runner is implemented
 - LSTM local evaluation path is implemented for `.pt` checkpoints
-- LSTM local predict/inference path is not implemented yet in `inference/predict.py`
+- LSTM local predict/inference path is implemented for standardized checkpoint bundles
 - transformer config schema is implemented
 - transformer training runner is not implemented yet and fails fast with `NotImplementedError`
 
@@ -362,6 +381,14 @@ Typical LSTM local outputs:
 - `artifacts/experiments/lstm/baseline_v1/val_metrics.json`
 - `artifacts/experiments/lstm/baseline_v1/test_metrics.json`
 
+Standardized LSTM contract:
+
+- `model.pt` stores the torch `state_dict`
+- `vocab.json` stores the token-to-id vocabulary used by training and inference
+- `training_config.json` stores model hyperparameters plus the expected artifact filenames
+- `val_metrics.json` is produced by training
+- `test_metrics.json` is produced by evaluation
+
 Why the LSTM bundle is larger than TF-IDF:
 
 - TF-IDF keeps preprocessing and classifier state inside one `.joblib` pipeline
@@ -381,7 +408,7 @@ Use the TF-IDF baseline first as the reference point, then compare the LSTM bran
 | Text handling | sklearn vectorizer inside pipeline | explicit tokenizer/vocab/padding pipeline |
 | Validation | internal split inside TF-IDF trainer | internal split inside LSTM trainer |
 | Test evaluation | supported | supported |
-| Local predict CLI | supported | not yet supported |
+| Local predict CLI | supported | supported |
 
 The repository keeps placeholder directories with `.gitkeep`, but real trained binaries and report files are ignored by git.
 
@@ -409,4 +436,7 @@ python -m pytest -q
 ruff check .
 python -m imdb_sentiment.cli train --config configs/baseline.yaml
 python -m imdb_sentiment.cli evaluate --config configs/baseline.yaml
+python -m imdb_sentiment.cli train --config configs/experiments/lstm_baseline_v1.yaml
+python -m imdb_sentiment.cli predict --config configs/experiments/lstm_baseline_v1.yaml --text "This movie was amazing."
+python -m imdb_sentiment.cli evaluate --config configs/experiments/lstm_baseline_v1.yaml
 ```

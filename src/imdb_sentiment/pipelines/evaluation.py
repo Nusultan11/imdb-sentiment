@@ -7,6 +7,7 @@ from datasets import Dataset
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from sklearn.pipeline import Pipeline
 
+from imdb_sentiment.artifacts.lstm import load_lstm_artifact_sidecars
 from imdb_sentiment.data.dataset import load_imdb_dataset
 from imdb_sentiment.data.lstm import LSTMVocabulary, build_lstm_dataloader
 from imdb_sentiment.inference.predict import load_model
@@ -64,6 +65,15 @@ def _require_torch() -> None:
         ) from TORCH_IMPORT_ERROR
 
 
+def _resolve_torch_device() -> torch.device:
+    _require_torch()
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def _move_batch_to_device(token_ids: torch.Tensor, labels: torch.Tensor, device: torch.device):
+    return token_ids.to(device), labels.to(device)
+
+
 def _evaluate_tfidf_model(config: AppConfig) -> dict[str, float]:
     model: Pipeline = load_model(config.paths.model_output)
 
@@ -80,9 +90,16 @@ def _evaluate_lstm_model(config: AppConfig) -> dict[str, float]:
     if not isinstance(config.model, LSTMModelConfig):
         raise TypeError("LSTM evaluation expects LSTMModelConfig")
 
-    checkpoint = torch.load(config.paths.model_output)
-    vocabulary = LSTMVocabulary(token_to_id=checkpoint["vocabulary"])
-    max_length = int(checkpoint["max_length"])
+    device = _resolve_torch_device()
+    checkpoint = torch.load(config.paths.model_output, map_location=device)
+    _artifact_contract, vocabulary_payload, training_config_payload = load_lstm_artifact_sidecars(
+        config.paths.model_output
+    )
+    vocabulary = LSTMVocabulary(token_to_id=vocabulary_payload)
+    serialized_model = training_config_payload.get("model")
+    if not isinstance(serialized_model, dict):
+        raise ValueError("training_config.json must contain a model mapping.")
+    max_length = int(serialized_model["max_length"])
 
     dataset = load_imdb_dataset()
     test_split = dataset["test"]
@@ -99,14 +116,16 @@ def _evaluate_lstm_model(config: AppConfig) -> dict[str, float]:
     )
     model = build_lstm_model(config.model)
     model.load_state_dict(checkpoint["model_state_dict"])
+    model.to(device)
     model.eval()
 
     all_predictions: list[int] = []
     with torch.no_grad():
         for token_ids, _labels in dataloader:
+            token_ids, _labels = _move_batch_to_device(token_ids, _labels, device)
             logits = model(token_ids)
             predictions = torch.sigmoid(logits).ge(0.5).to(dtype=torch.int64)
-            all_predictions.extend(predictions.tolist())
+            all_predictions.extend(predictions.cpu().tolist())
 
     return _evaluate_predictions(y_test, all_predictions)
 

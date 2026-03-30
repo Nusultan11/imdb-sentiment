@@ -30,5 +30,15 @@ jobs:
       - name: Lint
         run: ruff check .
 
+      - name: Run LSTM-focused tests
+        run: >
+          pytest -q
+          tests/test_lstm_data.py
+          tests/test_lstm_model.py
+          tests/test_train_lstm.py
+          tests/test_evaluation.py
+          tests/test_inference.py
+          tests/test_cli.py
+
       - name: Run tests
         run: pytest -q

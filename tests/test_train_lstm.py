@@ -10,6 +10,30 @@ import imdb_sentiment.pipelines.train_lstm as train_lstm_module
 from imdb_sentiment.settings import load_config
 
 
+def test_resolve_torch_device_prefers_cuda_when_available(monkeypatch) -> None:
+    monkeypatch.setattr(train_lstm_module.torch.cuda, "is_available", lambda: True)
+
+    device = train_lstm_module._resolve_torch_device()
+
+    assert device.type == "cuda"
+
+
+def test_move_batch_to_device_moves_tensors_to_cpu() -> None:
+    token_ids = torch.tensor([[1, 2], [3, 4]], dtype=torch.long)
+    labels = torch.tensor([1.0, 0.0], dtype=torch.float32)
+
+    moved_token_ids, moved_labels = train_lstm_module._move_batch_to_device(
+        token_ids,
+        labels,
+        torch.device("cpu"),
+    )
+
+    assert moved_token_ids.device.type == "cpu"
+    assert moved_labels.device.type == "cpu"
+    assert moved_token_ids.tolist() == [[1, 2], [3, 4]]
+    assert moved_labels.tolist() == [1.0, 0.0]
+
+
 def test_run_lstm_training_saves_best_checkpoint_and_metrics(
     tmp_path: Path,
     monkeypatch,
@@ -79,8 +103,10 @@ def test_run_lstm_training_saves_best_checkpoint_and_metrics(
     assert not config.paths.test_metrics_output.exists()
     vocab_output = config.paths.model_output.parent / "vocab.json"
     training_config_output = config.paths.model_output.parent / "training_config.json"
+    training_history_output = config.paths.model_output.parent / "training_history.json"
     assert vocab_output.exists()
     assert training_config_output.exists()
+    assert training_history_output.exists()
 
     saved_metrics = json.loads(config.paths.val_metrics_output.read_text(encoding="utf-8"))
     assert saved_metrics == metrics
@@ -105,8 +131,27 @@ def test_run_lstm_training_saves_best_checkpoint_and_metrics(
         "model_output": "model.pt",
         "vocab_output": "vocab.json",
         "training_config_output": "training_config.json",
+        "training_history_output": "training_history.json",
         "val_metrics_output": "val_metrics.json",
+        "test_metrics_output": "test_metrics.json",
     }
+    assert saved_training_config["required_for_inference"] == [
+        "model.pt",
+        "vocab.json",
+        "training_config.json",
+    ]
+    assert saved_training_config["required_for_evaluation"] == [
+        "model.pt",
+        "vocab.json",
+        "training_config.json",
+    ]
+    saved_training_history = json.loads(training_history_output.read_text(encoding="utf-8"))
+    assert saved_training_history["best_epoch"] == 1
+    assert len(saved_training_history["history"]) == 2
+    assert saved_training_history["history"][0]["epoch"] == 1
+    assert "train_loss" in saved_training_history["history"][0]
+    assert "val_loss" in saved_training_history["history"][0]
+    assert "val_f1" in saved_training_history["history"][0]
 
     checkpoint = torch.load(config.paths.model_output)
     assert set(checkpoint) == {"model_state_dict", "vocabulary", "max_length", "family", "name"}

@@ -8,8 +8,10 @@ paths:
   model_output: artifacts/experiments/lstm/baseline_v1/model.pt
   val_metrics_output: artifacts/experiments/lstm/baseline_v1/val_metrics.json
   test_metrics_output: artifacts/experiments/lstm/baseline_v1/test_metrics.json
-# The local LSTM trainer also writes vocab.json and training_config.json
-# next to model_output inside the same artifact directory.
+# Standardized LSTM bundle in this directory:
+# required for predict/evaluate input -> model.pt, vocab.json, training_config.json
+# produced by training -> model.pt, vocab.json, training_config.json, val_metrics.json
+# produced by evaluation -> test_metrics.json
 
 model:
   type: lstm

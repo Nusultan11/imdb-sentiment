@@ -12,6 +12,14 @@ from imdb_sentiment.models.lstm.model import build_lstm_model
 from imdb_sentiment.settings import load_config
 
 
+def test_evaluation_resolve_torch_device_prefers_cuda_when_available(monkeypatch) -> None:
+    monkeypatch.setattr(evaluation_module.torch.cuda, "is_available", lambda: True)
+
+    device = evaluation_module._resolve_torch_device()
+
+    assert device.type == "cuda"
+
+
 def test_run_evaluation_writes_test_metrics(tmp_path: Path, monkeypatch) -> None:
     model = build_baseline_model(
         max_features=100,
@@ -191,6 +199,51 @@ def test_run_evaluation_supports_lstm_checkpoints(tmp_path: Path, monkeypatch) -
             "name": config.experiment.name,
         },
         config.paths.model_output,
+    )
+    (config.paths.model_output.parent / "vocab.json").write_text(
+        json.dumps(vocabulary.token_to_id, indent=2),
+        encoding="utf-8",
+    )
+    (config.paths.model_output.parent / "training_config.json").write_text(
+        json.dumps(
+            {
+                "experiment": {
+                    "family": config.experiment.family,
+                    "name": config.experiment.name,
+                },
+                "seed": config.seed,
+                "model": {
+                    "type": "lstm",
+                    "vocab_size": config.model.vocab_size,
+                    "max_length": config.model.max_length,
+                    "embedding_dim": config.model.embedding_dim,
+                    "hidden_dim": config.model.hidden_dim,
+                    "batch_size": config.model.batch_size,
+                    "epochs": config.model.epochs,
+                    "dropout": config.model.dropout,
+                    "lr": config.model.lr,
+                },
+                "artifacts": {
+                    "model_output": "model.pt",
+                    "vocab_output": "vocab.json",
+                    "training_config_output": "training_config.json",
+                    "val_metrics_output": "val_metrics.json",
+                    "test_metrics_output": "test_metrics.json",
+                },
+                "required_for_inference": [
+                    "model.pt",
+                    "vocab.json",
+                    "training_config.json",
+                ],
+                "required_for_evaluation": [
+                    "model.pt",
+                    "vocab.json",
+                    "training_config.json",
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
     )
 
     metrics = evaluation_module.run_evaluation(config)

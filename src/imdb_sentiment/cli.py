@@ -3,11 +3,16 @@ from __future__ import annotations
 import argparse
 import json
 
-from imdb_sentiment.inference.predict import predict_from_model_path
+from imdb_sentiment.inference.predict import (
+    load_lstm_checkpoint,
+    load_model,
+    predict_lstm_texts,
+    predict_texts,
+)
 from imdb_sentiment.pipelines.evaluation import run_evaluation
 from imdb_sentiment.pipelines.prepare_data import prepare_training_data
 from imdb_sentiment.pipelines.train import run_training
-from imdb_sentiment.settings import load_config
+from imdb_sentiment.settings import LSTMModelConfig, load_config
 from imdb_sentiment.webapp import serve_review_classifier
 
 
@@ -101,7 +106,21 @@ def _run_train_command(config_path: str) -> None:
 
 def _run_predict_command(config_path: str, texts: list[str]) -> None:
     config = load_config(config_path)
-    predictions = predict_from_model_path(config.paths.model_output, texts)
+    family = config.experiment.family
+
+    if family == "tfidf":
+        model = load_model(config.paths.model_output)
+        predictions = predict_texts(model, texts)
+    elif family == "lstm":
+        if not isinstance(config.model, LSTMModelConfig):
+            raise TypeError("CLI LSTM predict expects LSTMModelConfig.")
+        artifacts = load_lstm_checkpoint(config.paths.model_output, config.model)
+        predictions = predict_lstm_texts(artifacts, texts)
+    else:
+        raise NotImplementedError(
+            "Predict CLI is not implemented for this experiment family yet."
+        )
+
     print(json.dumps({"predictions": predictions}, ensure_ascii=False))
 
 
