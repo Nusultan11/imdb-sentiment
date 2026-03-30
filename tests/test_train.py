@@ -2,8 +2,10 @@ from pathlib import Path
 import json
 
 from datasets import Dataset, DatasetDict
+import pytest
 
 import imdb_sentiment.pipelines.train as train_module
+import imdb_sentiment.pipelines.train_tfidf as train_tfidf_module
 from imdb_sentiment.settings import load_config
 
 
@@ -55,7 +57,7 @@ def test_run_training_returns_accuracy(tmp_path: Path, monkeypatch) -> None:
             ),
         }
     )
-    monkeypatch.setattr(train_module, "load_imdb_dataset", lambda: fake_dataset)
+    monkeypatch.setattr(train_tfidf_module, "load_imdb_dataset", lambda: fake_dataset)
 
     config = load_config(config_path)
     metrics = train_module.run_training(config)
@@ -68,3 +70,39 @@ def test_run_training_returns_accuracy(tmp_path: Path, monkeypatch) -> None:
     assert not config.paths.test_metrics_output.exists()
     saved_metrics = json.loads(config.paths.val_metrics_output.read_text(encoding="utf-8"))
     assert saved_metrics == metrics
+
+
+def test_run_training_rejects_local_lstm_training(tmp_path: Path) -> None:
+    config_path = tmp_path / "lstm.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "experiment:",
+                "  family: lstm",
+                "  name: baseline_test",
+                "seed: 42",
+                "paths:",
+                f"  model_output: {(tmp_path / 'artifacts' / 'models' / 'model.pt').as_posix()}",
+                f"  val_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'val_metrics.json').as_posix()}",
+                f"  test_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'test_metrics.json').as_posix()}",
+                "model:",
+                "  type: lstm",
+                "  vocab_size: 20000",
+                "  max_length: 32",
+                "  embedding_dim: 16",
+                "  hidden_dim: 16",
+                "  batch_size: 2",
+                "  epochs: 1",
+                "  dropout: 0.3",
+                "  lr: 0.001",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_config(config_path)
+    with pytest.raises(
+        NotImplementedError,
+        match="LSTM training is expected to run in Colab. Export train/val/test data locally first.",
+    ):
+        train_module.run_training(config)

@@ -11,6 +11,11 @@ paths:
 
 model:
   type: lstm
-  max_features: 20000
-  ngram_range: [1, 1]
-  max_iter: 10
+  vocab_size: 20000
+  max_length: 256
+  embedding_dim: 128
+  hidden_dim: 128
+  batch_size: 32
+  epochs: 5
+  dropout: 0.3
+  lr: 0.001

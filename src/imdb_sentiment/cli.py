@@ -5,8 +5,10 @@ import json
 
 from imdb_sentiment.inference.predict import predict_from_model_path
 from imdb_sentiment.pipelines.evaluation import run_evaluation
+from imdb_sentiment.pipelines.prepare_data import prepare_training_data
 from imdb_sentiment.pipelines.train import run_training
 from imdb_sentiment.settings import load_config
+from imdb_sentiment.webapp import serve_review_classifier
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -45,6 +47,42 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional metrics output path override",
     )
 
+    prepare_data_parser = subparsers.add_parser(
+        "prepare-data",
+        help="Prepare family-specific training data artifacts",
+    )
+    prepare_data_parser.add_argument(
+        "--config",
+        default="configs/baseline.yaml",
+        help="Path to YAML config file",
+    )
+    prepare_data_parser.add_argument(
+        "--output-dir",
+        default=None,
+        help="Optional prepared data output directory override",
+    )
+
+    web_parser = subparsers.add_parser(
+        "serve-web",
+        help="Start a local website for review classification",
+    )
+    web_parser.add_argument(
+        "--config",
+        default="configs/baseline.yaml",
+        help="Path to YAML config file",
+    )
+    web_parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Host interface for the local web server",
+    )
+    web_parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port for the local web server",
+    )
+
     return parser
 
 
@@ -80,6 +118,21 @@ def _run_evaluate_command(config_path: str, output_path: str | None) -> None:
     print(f"Test metrics saved to: {resolved_output_path}")
 
 
+def _run_prepare_data_command(config_path: str, output_dir: str | None) -> None:
+    config = load_config(config_path)
+    prepared_paths = prepare_training_data(config, output_dir=output_dir)
+    serialized_paths = {
+        name: str(path)
+        for name, path in prepared_paths.items()
+    }
+    print(json.dumps(serialized_paths, ensure_ascii=False))
+
+
+def _run_serve_web_command(config_path: str, host: str, port: int) -> None:
+    config = load_config(config_path)
+    serve_review_classifier(config.paths.model_output, host=host, port=port)
+
+
 def main() -> None:
     parser = _build_parser()
     args = parser.parse_args()
@@ -95,6 +148,14 @@ def main() -> None:
 
     if args.command == "evaluate":
         _run_evaluate_command(args.config, args.output)
+        return
+
+    if args.command == "prepare-data":
+        _run_prepare_data_command(args.config, args.output_dir)
+        return
+
+    if args.command == "serve-web":
+        _run_serve_web_command(args.config, args.host, args.port)
         return
 
     parser.error(f"Unsupported command: {args.command}")

@@ -1,2 +1,4 @@
 def build_lstm_model(*args, **kwargs):
-    raise NotImplementedError("LSTM model scaffold exists, but implementation is not added yet.")
+    raise NotImplementedError(
+        "LSTM training is expected to run in Colab. Prepare train/val/test data locally first."
+    )

@@ -41,6 +41,8 @@ model:
 ```
 
 This keeps experiment identity, validation outputs, and test outputs explicit.
+It also lets each family define its own model fields instead of forcing TF-IDF and neural
+models into one flat parameter schema.
 
 ## Available config scaffolds
 
@@ -76,8 +78,15 @@ Typical output files:
 Baseline and experiment workflow:
 
 1. train with `python -m imdb_sentiment.cli train --config ...`
-2. run local predictions with `python -m imdb_sentiment.cli predict --config ... --text ...`
-3. score the test split with `python -m imdb_sentiment.cli evaluate --config ...`
+2. for LSTM, export `train/val/test` data with `python -m imdb_sentiment.cli prepare-data --config ...`
+3. run local predictions with `python -m imdb_sentiment.cli predict --config ... --text ...`
+4. score the test split with `python -m imdb_sentiment.cli evaluate --config ...`
+
+Current runner status:
+
+- TF-IDF family: implemented
+- LSTM family: config scaffold and Colab-first data preparation pipeline implemented
+- transformer family: config scaffold implemented, training runner not implemented yet
 
 ## CI guardrails
 
