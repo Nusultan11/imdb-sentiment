@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from imdb_sentiment.pipelines.train_lstm import run_lstm_training
 from imdb_sentiment.pipelines.train_tfidf import run_tfidf_training
 from imdb_sentiment.settings import AppConfig
 
@@ -11,9 +12,7 @@ def run_training(config: AppConfig) -> dict[str, float]:
         return run_tfidf_training(config)
 
     if family == "lstm":
-        raise NotImplementedError(
-            "LSTM training is expected to run in Colab. Export train/val/test data locally first."
-        )
+        return run_lstm_training(config)
 
     if family == "transformer":
         raise NotImplementedError(

@@ -2,7 +2,6 @@ from pathlib import Path
 import json
 
 from datasets import Dataset, DatasetDict
-import pytest
 
 import imdb_sentiment.pipelines.train as train_module
 import imdb_sentiment.pipelines.train_tfidf as train_tfidf_module
@@ -72,7 +71,7 @@ def test_run_training_returns_accuracy(tmp_path: Path, monkeypatch) -> None:
     assert saved_metrics == metrics
 
 
-def test_run_training_rejects_local_lstm_training(tmp_path: Path) -> None:
+def test_run_training_routes_lstm_family_to_lstm_trainer(tmp_path: Path, monkeypatch) -> None:
     config_path = tmp_path / "lstm.yaml"
     config_path.write_text(
         "\n".join(
@@ -101,8 +100,15 @@ def test_run_training_rejects_local_lstm_training(tmp_path: Path) -> None:
     )
 
     config = load_config(config_path)
-    with pytest.raises(
-        NotImplementedError,
-        match="LSTM training is expected to run in Colab. Export train/val/test data locally first.",
-    ):
-        train_module.run_training(config)
+    expected_metrics = {
+        "loss": 0.4,
+        "accuracy": 0.75,
+        "precision": 0.8,
+        "recall": 0.67,
+        "f1": 0.73,
+    }
+    monkeypatch.setattr(train_module, "run_lstm_training", lambda config_arg: expected_metrics)
+
+    metrics = train_module.run_training(config)
+
+    assert metrics == expected_metrics

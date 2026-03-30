@@ -104,9 +104,21 @@ def test_load_config_supports_lstm_family_specific_fields(tmp_path: Path) -> Non
     config = load_config(config_path)
 
     assert isinstance(config.model, LSTMModelConfig)
+    assert config.experiment.family == "lstm"
+    assert config.experiment.name == "baseline_test"
+    assert config.seed == 42
+    assert config.model.type == "lstm"
+    assert config.model.vocab_size == 20000
     assert config.model.max_length == 64
     assert config.model.embedding_dim == 128
+    assert config.model.hidden_dim == 128
+    assert config.model.batch_size == 32
+    assert config.model.epochs == 5
     assert config.model.dropout == 0.3
+    assert config.model.lr == 0.001
+    assert config.paths.model_output == tmp_path / "artifacts" / "models" / "model.pt"
+    assert config.paths.val_metrics_output == tmp_path / "artifacts" / "reports" / "val_metrics.json"
+    assert config.paths.test_metrics_output == tmp_path / "artifacts" / "reports" / "test_metrics.json"
 
 
 def test_load_config_supports_transformer_family_specific_fields(tmp_path: Path) -> None:
@@ -171,6 +183,38 @@ def test_load_config_rejects_invalid_lstm_dropout(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="model.dropout must be in the range \\[0, 1\\)"):
+        load_config(config_path)
+
+
+def test_load_config_rejects_non_lstm_model_type_for_lstm_family(tmp_path: Path) -> None:
+    config_path = tmp_path / "lstm_invalid_type.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "experiment:",
+                "  family: lstm",
+                "  name: baseline_test",
+                "seed: 42",
+                "paths:",
+                f"  model_output: {(tmp_path / 'artifacts' / 'models' / 'model.pt').as_posix()}",
+                f"  val_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'val_metrics.json').as_posix()}",
+                f"  test_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'test_metrics.json').as_posix()}",
+                "model:",
+                "  type: logistic_regression",
+                "  vocab_size: 20000",
+                "  max_length: 64",
+                "  embedding_dim: 128",
+                "  hidden_dim: 128",
+                "  batch_size: 32",
+                "  epochs: 5",
+                "  dropout: 0.3",
+                "  lr: 0.001",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="LSTM experiments must use model.type=lstm"):
         load_config(config_path)
 
 

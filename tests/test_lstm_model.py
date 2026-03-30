@@ -47,6 +47,7 @@ def test_build_lstm_model_returns_sentiment_lstm(tmp_path: Path) -> None:
     assert isinstance(model, SentimentLSTM)
     assert model.embedding.num_embeddings == 100
     assert model.embedding.embedding_dim == 16
+    assert model.embedding.padding_idx == 0
     assert model.encoder.hidden_size == 12
 
 
@@ -99,3 +100,17 @@ def test_build_lstm_model_rejects_non_lstm_config(tmp_path: Path) -> None:
 
     with pytest.raises(TypeError, match="build_lstm_model expects LSTMModelConfig."):
         build_lstm_model(config.model)
+
+
+def test_predict_logits_ignores_trailing_padding_tokens(tmp_path: Path) -> None:
+    config = load_config(_write_lstm_config(tmp_path))
+    model = build_lstm_model(config.model)
+    model.eval()
+
+    short_sequence = torch.tensor([[7, 8]], dtype=torch.long)
+    padded_sequence = torch.tensor([[7, 8, 0, 0]], dtype=torch.long)
+
+    short_logits = predict_logits(model, short_sequence)
+    padded_logits = predict_logits(model, padded_sequence)
+
+    assert torch.allclose(short_logits, padded_logits)

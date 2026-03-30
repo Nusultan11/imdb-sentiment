@@ -7,10 +7,12 @@ from imdb_sentiment.settings import LSTMModelConfig
 try:
     import torch
     from torch import Tensor, nn
+    from torch.nn.utils.rnn import pack_padded_sequence
 except ImportError as exc:  # pragma: no cover - exercised only when torch is absent
     torch = None
     Tensor = object
     nn = None
+    pack_padded_sequence = None
     TORCH_IMPORT_ERROR = exc
 else:
     TORCH_IMPORT_ERROR = None
@@ -25,9 +27,15 @@ if nn is not None:
             embedding_dim: int,
             hidden_dim: int,
             dropout: float,
+            padding_idx: int = 0,
         ) -> None:
             super().__init__()
-            self.embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
+            self.padding_idx = padding_idx
+            self.embedding = nn.Embedding(
+                num_embeddings=vocab_size,
+                embedding_dim=embedding_dim,
+                padding_idx=padding_idx,
+            )
             self.encoder = nn.LSTM(
                 input_size=embedding_dim,
                 hidden_size=hidden_dim,
@@ -38,7 +46,14 @@ if nn is not None:
 
         def forward(self, token_ids: Tensor) -> Tensor:
             embedded_tokens = self.embedding(token_ids)
-            _, (hidden_state, _) = self.encoder(embedded_tokens)
+            token_lengths = token_ids.ne(self.padding_idx).sum(dim=1).clamp(min=1).cpu()
+            packed_tokens = pack_padded_sequence(
+                embedded_tokens,
+                lengths=token_lengths,
+                batch_first=True,
+                enforce_sorted=False,
+            )
+            _, (hidden_state, _) = self.encoder(packed_tokens)
             last_hidden_state = hidden_state[-1]
             dropped_hidden_state = self.dropout(last_hidden_state)
             logits = self.classifier(dropped_hidden_state)
@@ -76,6 +91,7 @@ def build_lstm_model(config: LSTMModelConfig) -> SentimentLSTM:
         embedding_dim=config.embedding_dim,
         hidden_dim=config.hidden_dim,
         dropout=config.dropout,
+        padding_idx=0,
     )
 
 
