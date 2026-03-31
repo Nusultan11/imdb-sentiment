@@ -88,17 +88,52 @@ def _train_one_epoch(
     return total_loss / batch_count
 
 
+def _select_best_threshold(
+    labels: list[int],
+    probabilities: list[float],
+) -> tuple[float, dict[str, float]]:
+    if len(labels) != len(probabilities):
+        raise ValueError("Threshold tuning requires labels and probabilities with matching lengths.")
+    if not labels:
+        raise ValueError("Threshold tuning requires at least one validation example.")
+
+    best_threshold = 0.5
+    best_metrics = {"f1": -1.0}
+
+    for threshold in [value / 100 for value in range(10, 91)]:
+        predictions = [1 if probability >= threshold else 0 for probability in probabilities]
+        precision, recall, f1, _ = precision_recall_fscore_support(
+            labels,
+            predictions,
+            average="binary",
+            pos_label=1,
+            zero_division=0,
+        )
+        accuracy = accuracy_score(labels, predictions)
+
+        if f1 > best_metrics["f1"]:
+            best_threshold = threshold
+            best_metrics = {
+                "accuracy": float(accuracy),
+                "precision": float(precision),
+                "recall": float(recall),
+                "f1": float(f1),
+            }
+
+    return best_threshold, best_metrics
+
+
 def _evaluate_lstm_model(
     model: nn.Module,
     dataloader,
     loss_fn,
     device: torch.device,
-) -> dict[str, float]:
+) -> tuple[dict[str, float], float]:
     model.eval()
     total_loss = 0.0
     batch_count = 0
     all_labels: list[int] = []
-    all_predictions: list[int] = []
+    all_probabilities: list[float] = []
 
     with torch.no_grad():
         for token_ids, labels in dataloader:
@@ -108,28 +143,18 @@ def _evaluate_lstm_model(
             total_loss += float(loss.item())
             batch_count += 1
 
-            predictions = torch.sigmoid(logits).ge(0.5).to(dtype=torch.int64)
-            all_predictions.extend(predictions.cpu().tolist())
             all_labels.extend(labels.to(dtype=torch.int64).cpu().tolist())
+            all_probabilities.extend(torch.sigmoid(logits).cpu().tolist())
 
     if batch_count == 0:
         raise ValueError("LSTM evaluation dataloader produced no batches.")
 
-    precision, recall, f1, _ = precision_recall_fscore_support(
-        all_labels,
-        all_predictions,
-        average="binary",
-        pos_label=1,
-        zero_division=0,
-    )
+    best_threshold, best_metrics = _select_best_threshold(all_labels, all_probabilities)
 
     return {
         "loss": total_loss / batch_count,
-        "accuracy": float(accuracy_score(all_labels, all_predictions)),
-        "precision": float(precision),
-        "recall": float(recall),
-        "f1": float(f1),
-    }
+        **best_metrics,
+    }, best_threshold
 
 
 def _build_training_history_payload(
@@ -159,6 +184,7 @@ def _save_best_lstm_artifacts(
     model: nn.Module,
     vocabulary,
     metrics: dict[str, float],
+    decision_threshold: float,
 ) -> None:
     artifact_contract = resolve_lstm_artifact_contract(config)
     _ensure_parent_dir(artifact_contract.model_output)
@@ -182,7 +208,10 @@ def _save_best_lstm_artifacts(
     )
     write_json_artifact(
         artifact_contract.threshold_tuning_output,
-        build_lstm_threshold_tuning_payload(),
+        build_lstm_threshold_tuning_payload(
+            decision_threshold=decision_threshold,
+            selection_strategy="validation_best_f1",
+        ),
     )
     write_json_artifact(artifact_contract.val_metrics_output, metrics)
 
@@ -240,7 +269,7 @@ def run_lstm_training(config: AppConfig) -> dict[str, float]:
             loss_fn=loss_fn,
             device=device,
         )
-        validation_metrics = _evaluate_lstm_model(
+        validation_metrics, best_threshold = _evaluate_lstm_model(
             model=model,
             dataloader=val_dataloader,
             loss_fn=loss_fn,
@@ -263,6 +292,7 @@ def run_lstm_training(config: AppConfig) -> dict[str, float]:
                 model=model,
                 vocabulary=vocabulary,
                 metrics=validation_metrics,
+                decision_threshold=best_threshold,
             )
 
     if best_metrics is None:

@@ -126,10 +126,13 @@ def build_lstm_training_config_payload(
     }
 
 
-def build_lstm_threshold_tuning_payload(decision_threshold: float = 0.5) -> dict[str, object]:
+def build_lstm_threshold_tuning_payload(
+    decision_threshold: float = 0.5,
+    selection_strategy: str = "fixed_default",
+) -> dict[str, object]:
     return {
         "decision_threshold": decision_threshold,
-        "selection_strategy": "fixed_default",
+        "selection_strategy": selection_strategy,
     }
 
 

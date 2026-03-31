@@ -34,6 +34,21 @@ def test_move_batch_to_device_moves_tensors_to_cpu() -> None:
     assert moved_labels.tolist() == [1.0, 0.0]
 
 
+def test_select_best_threshold_returns_best_f1_metrics() -> None:
+    best_threshold, best_metrics = train_lstm_module._select_best_threshold(
+        labels=[1, 1, 0, 0],
+        probabilities=[0.91, 0.55, 0.45, 0.05],
+    )
+
+    assert best_threshold == 0.46
+    assert best_metrics == {
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+    }
+
+
 def test_run_lstm_training_saves_best_checkpoint_and_metrics(
     tmp_path: Path,
     monkeypatch,
@@ -160,10 +175,8 @@ def test_run_lstm_training_saves_best_checkpoint_and_metrics(
     assert "train_loss" in saved_training_history["history"][0]
     assert "val_loss" in saved_training_history["history"][0]
     assert "val_f1" in saved_training_history["history"][0]
-    assert saved_threshold_tuning == {
-        "decision_threshold": 0.5,
-        "selection_strategy": "fixed_default",
-    }
+    assert 0.1 <= saved_threshold_tuning["decision_threshold"] <= 0.9
+    assert saved_threshold_tuning["selection_strategy"] == "validation_best_f1"
 
     checkpoint = torch.load(config.paths.model_output)
     assert set(checkpoint) == {"model_state_dict", "vocabulary", "max_length", "family", "name"}
@@ -242,13 +255,16 @@ def test_run_lstm_training_builds_model_from_lstm_architecture_config(
     monkeypatch.setattr(
         train_lstm_module,
         "_evaluate_lstm_model",
-        lambda **kwargs: {
-            "loss": 0.2,
-            "accuracy": 1.0,
-            "precision": 1.0,
-            "recall": 1.0,
-            "f1": 1.0,
-        },
+        lambda **kwargs: (
+            {
+                "loss": 0.2,
+                "accuracy": 1.0,
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+            },
+            0.4,
+        ),
     )
     monkeypatch.setattr(train_lstm_module, "_save_best_lstm_artifacts", lambda **kwargs: None)
     monkeypatch.setattr(train_lstm_module, "_save_training_history", lambda **kwargs: None)
