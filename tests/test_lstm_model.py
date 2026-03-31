@@ -87,12 +87,19 @@ def test_build_lstm_model_smoke_supports_all_directionality_and_pooling_combinat
         ],
         dtype=torch.long,
     )
+    expected_feature_dim = 24 if bidirectional else 12
+
+    encoder_output, hidden_state, token_mask = model._encode(token_ids)
+    pooled = model._pool(encoder_output, hidden_state, token_mask)
 
     logits = model(token_ids)
 
     assert isinstance(model, SentimentLSTM)
     assert model.bidirectional is bidirectional
     assert model.pooling == pooling
+    assert model.classifier.in_features == expected_feature_dim
+    assert encoder_output.shape == (2, 5, expected_feature_dim)
+    assert pooled.shape == (2, expected_feature_dim)
     assert logits.shape == (2,)
     assert logits.dtype == torch.float32
 
