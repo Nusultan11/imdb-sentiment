@@ -1,0 +1,24 @@
+{
+  "experiment": "bidirectional_v1",
+  "archive_name": "bidirectional_v1_artifacts.zip",
+  "canonical_runtime_files": [
+    "model.pt",
+    "vocab.json",
+    "training_config.json",
+    "training_history.json",
+    "val_metrics.json"
+  ],
+  "archive_entries": [
+    "vocab.json",
+    "val_metrics.json",
+    "model.pt",
+    "training_config.json",
+    "training_history.json"
+  ],
+  "non_runtime_entries": [],
+  "notebook_path": "notebooks/lstm/bilstm_v1.ipynb",
+  "notes": [
+    "This archive is already clean and contains only canonical runtime artifacts.",
+    "Canonical experiment config lives in configs/experiments/lstm_bidirectional_v1.yaml."
+  ]
+}

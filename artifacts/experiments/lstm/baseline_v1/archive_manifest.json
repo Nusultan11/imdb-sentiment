@@ -1,0 +1,31 @@
+{
+  "experiment": "baseline_v1",
+  "archive_name": "lstm_baseline_v1_artifacts.zip",
+  "canonical_runtime_files": [
+    "model.pt",
+    "vocab.json",
+    "training_config.json",
+    "training_history.json",
+    "val_metrics.json"
+  ],
+  "archive_entries": [
+    "baseline_v1/",
+    "lstm_baseline_v1.yaml",
+    "baseline_v1/vocab.json",
+    "baseline_v1/val_metrics.json",
+    "baseline_v1/model.pt",
+    "baseline_v1/.gitkeep",
+    "baseline_v1/training_config.json",
+    "baseline_v1/training_history.json"
+  ],
+  "non_runtime_entries": [
+    "baseline_v1/",
+    "baseline_v1/.gitkeep",
+    "lstm_baseline_v1.yaml"
+  ],
+  "notebook_path": "notebooks/lstm/lstm_v1.ipynb",
+  "notes": [
+    "Canonical experiment config lives in configs/experiments/lstm_baseline_v1.yaml.",
+    "The top-level baseline_v1/ folder and .gitkeep are archive packaging noise, not runtime requirements."
+  ]
+}
