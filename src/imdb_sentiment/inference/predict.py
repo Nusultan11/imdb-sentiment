@@ -29,6 +29,7 @@ class LSTMInferenceArtifacts:
     model: SentimentLSTM
     vocabulary: LSTMVocabulary
     max_length: int
+    preprocessing: str
     decision_threshold: float
 
 
@@ -115,6 +116,7 @@ def load_lstm_checkpoint(
         model=model,
         vocabulary=vocabulary,
         max_length=model_config.max_length,
+        preprocessing=model_config.preprocessing,
         decision_threshold=decision_threshold,
     )
 
@@ -133,6 +135,7 @@ def predict_lstm_texts(
             text=text,
             vocabulary=artifacts.vocabulary,
             max_length=artifacts.max_length,
+            preprocessing=artifacts.preprocessing,
         )
         for text in texts_list
     ]

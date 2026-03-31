@@ -5,7 +5,7 @@ Experiment-ready ML project for sentiment analysis on IMDb reviews.
 The repository keeps a clean **TF-IDF + Logistic Regression** baseline and separates the workflow into:
 
 - `train`: fit on the IMDb training split and report validation metrics from an internal train/validation split
-- `prepare-data`: export explicit `train/val/test` files for LSTM experiments
+- `prepare-data`: export explicit `train/val/test` files for LSTM experiments; this is an auxiliary export tool and the main LSTM trainer does not read these JSONL files back
 - `predict`: run local inference with a saved family-specific model artifact
 - `evaluate`: score a saved model on the IMDb test split and write test metrics separately
 
@@ -42,6 +42,13 @@ This separation keeps the baseline honest:
 - Replaced last hidden aggregation with `masked_mean` pooling
 - Tuned key hyperparameters with Optuna on the strongest masked-mean BiLSTM branch
 - Best archived validation result for the LSTM family: `F1 = 0.8952`
+
+Available LSTM preprocessing modes:
+
+- `whitespace_v1`: legacy whitespace-oriented normalization path
+- `regex_v2`: regex-driven tokenization path for the main local LSTM experiments
+
+Current main experiment configs such as [lstm_baseline_v1.yaml](/C:/Users/nurs/OneDrive/Рабочий%20стол/imdb-sentiment/configs/experiments/lstm_baseline_v1.yaml) and [lstm_bidirectional_v1.yaml](/C:/Users/nurs/OneDrive/Рабочий%20стол/imdb-sentiment/configs/experiments/lstm_bidirectional_v1.yaml) explicitly use `preprocessing: regex_v2`.
 
 See: [lstm_experiments.md](/C:/Users/nurs/OneDrive/Рабочий%20стол/imdb-sentiment/docs/experiments/lstm_experiments.md)
 
@@ -207,6 +214,7 @@ model:
   max_length: 256
   embedding_dim: 128
   hidden_dim: 128
+  preprocessing: regex_v2
   batch_size: 32
   epochs: 5
   dropout: 0.3
@@ -355,6 +363,7 @@ The repository now makes the metric split explicit:
 - TF-IDF training creates an internal validation split from `dataset["train"]`
 - LSTM training creates its own train/validation split from `dataset["train"]`
 - LSTM data preparation exports explicit `train`, `val`, and `test` JSONL files
+- those exported JSONL files are for inspection or external reuse; the main LSTM trainer still loads IMDb directly and makes its own split
 - TF-IDF training writes validation metrics to `paths.val_metrics_output`
 - `evaluation.py` is family-aware and scores only `dataset["test"]`
 - `evaluation.py` writes test metrics to `paths.test_metrics_output`

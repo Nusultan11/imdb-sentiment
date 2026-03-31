@@ -207,6 +207,7 @@ def test_load_lstm_checkpoint_restores_vocabulary_and_max_length(tmp_path) -> No
     artifacts = load_lstm_checkpoint(config.paths.model_output)
 
     assert artifacts.max_length == 6
+    assert artifacts.preprocessing == "whitespace_v1"
     assert artifacts.vocabulary.pad_id == 0
     assert artifacts.vocabulary.unk_id == 1
     assert artifacts.vocabulary.token_to_id["great"] == vocabulary.token_to_id["great"]
@@ -613,6 +614,7 @@ def test_predict_lstm_texts_uses_artifact_threshold() -> None:
         model=_FixedLogitModel(),
         vocabulary=vocabulary,
         max_length=6,
+        preprocessing="whitespace_v1",
         decision_threshold=0.5,
     )
 
@@ -622,6 +624,41 @@ def test_predict_lstm_texts_uses_artifact_threshold() -> None:
     )
 
     assert predictions == [0, 1, 1]
+
+
+def test_predict_lstm_texts_uses_artifact_preprocessing() -> None:
+    vocabulary = build_lstm_vocabulary(
+        ["don't like it", "worst-film-ever", "amazing!!!"],
+        max_size=50,
+        preprocessing="regex_v2",
+    )
+
+    class _RecordingModel(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.seen_token_ids: torch.Tensor | None = None
+
+        def forward(self, token_ids):  # noqa: D401 - tiny test double
+            self.seen_token_ids = token_ids.clone()
+            return torch.tensor([0.0], dtype=torch.float32)
+
+    model = _RecordingModel()
+    artifacts = LSTMInferenceArtifacts(
+        model=model,
+        vocabulary=vocabulary,
+        max_length=6,
+        preprocessing="regex_v2",
+        decision_threshold=0.5,
+    )
+
+    predictions = predict_lstm_texts(artifacts, ["worst-film-ever"])
+
+    assert predictions == [1]
+    assert model.seen_token_ids is not None
+    assert model.seen_token_ids.shape == (1, 6)
+    assert model.seen_token_ids[0, 0].item() == vocabulary.token_to_id["worst"]
+    assert model.seen_token_ids[0, 1].item() == vocabulary.token_to_id["film"]
+    assert model.seen_token_ids[0, 2].item() == vocabulary.token_to_id["ever"]
 
 
 def test_load_lstm_checkpoint_restores_saved_decision_threshold(tmp_path) -> None:
@@ -738,3 +775,123 @@ def test_load_lstm_checkpoint_restores_saved_decision_threshold(tmp_path) -> Non
 
     assert artifacts.decision_threshold == 0.9
     assert predictions == [0, 0]
+
+
+def test_load_lstm_checkpoint_and_predict_reuse_saved_preprocessing(tmp_path) -> None:
+    config_path = tmp_path / "lstm_regex_checkpoint.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "experiment:",
+                "  family: lstm",
+                "  name: regex_checkpoint_test",
+                "seed: 42",
+                "paths:",
+                f"  model_output: {(tmp_path / 'artifacts' / 'models' / 'model.pt').as_posix()}",
+                f"  val_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'val_metrics.json').as_posix()}",
+                f"  test_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'test_metrics.json').as_posix()}",
+                "model:",
+                "  type: lstm",
+                "  vocab_size: 50",
+                "  max_length: 6",
+                "  embedding_dim: 8",
+                "  hidden_dim: 6",
+                "  bidirectional: false",
+                "  pooling: last_hidden",
+                "  batch_size: 2",
+                "  epochs: 2",
+                "  dropout: 0.2",
+                "  lr: 0.01",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    config = load_config(config_path)
+    vocabulary = build_lstm_vocabulary(
+        ["don't like it", "worst-film-ever", "Amazing!!! movie"],
+        max_size=50,
+        preprocessing="regex_v2",
+    )
+    model = build_lstm_model(config.model)
+    for parameter in model.parameters():
+        parameter.data.zero_()
+    model.classifier.bias.data.fill_(2.0)
+
+    config.paths.model_output.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "model_state_dict": model.state_dict(),
+            "vocabulary": vocabulary.token_to_id,
+            "max_length": 6,
+            "family": config.experiment.family,
+            "name": config.experiment.name,
+        },
+        config.paths.model_output,
+    )
+    (config.paths.model_output.parent / "vocab.json").write_text(
+        json.dumps(vocabulary.token_to_id, indent=2),
+        encoding="utf-8",
+    )
+    (config.paths.model_output.parent / "training_config.json").write_text(
+        json.dumps(
+            {
+                "experiment": {
+                    "family": config.experiment.family,
+                    "name": config.experiment.name,
+                },
+                "seed": config.seed,
+                "model": {
+                    "type": "lstm",
+                    "vocab_size": 50,
+                    "max_length": 6,
+                    "embedding_dim": 8,
+                    "hidden_dim": 6,
+                    "batch_size": 2,
+                    "epochs": 2,
+                    "dropout": 0.2,
+                    "lr": 0.01,
+                    "bidirectional": False,
+                    "pooling": "last_hidden",
+                    "preprocessing": "regex_v2",
+                },
+                "artifacts": {
+                    "model_output": "model.pt",
+                    "vocab_output": "vocab.json",
+                    "training_config_output": "training_config.json",
+                    "threshold_tuning_output": "threshold_tuning.json",
+                    "val_metrics_output": "val_metrics.json",
+                    "test_metrics_output": "test_metrics.json",
+                },
+                "required_for_inference": [
+                    "model.pt",
+                    "vocab.json",
+                    "training_config.json",
+                ],
+                "required_for_evaluation": [
+                    "model.pt",
+                    "vocab.json",
+                    "training_config.json",
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    (config.paths.model_output.parent / "threshold_tuning.json").write_text(
+        json.dumps(
+            {
+                "decision_threshold": 0.5,
+                "selection_strategy": "validation_best_f1",
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    artifacts = load_lstm_checkpoint(config.paths.model_output)
+
+    assert artifacts.preprocessing == "regex_v2"
+
+    predictions = predict_lstm_texts(artifacts, ["worst-film-ever", "Amazing!!! movie"])
+
+    assert predictions == [1, 1]

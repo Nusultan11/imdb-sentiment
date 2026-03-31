@@ -73,6 +73,7 @@ def test_run_lstm_training_saves_best_checkpoint_and_metrics(
                 "  hidden_dim: 6",
                 "  bidirectional: false",
                 "  pooling: last_hidden",
+                "  preprocessing: regex_v2",
                 "  batch_size: 2",
                 "  epochs: 2",
                 "  dropout: 0.2",
@@ -147,7 +148,7 @@ def test_run_lstm_training_saves_best_checkpoint_and_metrics(
         "lr": 0.01,
         "bidirectional": False,
         "pooling": "last_hidden",
-        "preprocessing": "whitespace_v1",
+        "preprocessing": "regex_v2",
     }
     assert saved_training_config["artifacts"] == {
         "model_output": "model.pt",
@@ -211,6 +212,7 @@ def test_run_lstm_training_builds_model_from_lstm_architecture_config(
                 "  hidden_dim: 6",
                 "  bidirectional: true",
                 "  pooling: masked_mean",
+                "  preprocessing: regex_v2",
                 "  batch_size: 2",
                 "  epochs: 1",
                 "  dropout: 0.2",
@@ -280,5 +282,5 @@ def test_run_lstm_training_builds_model_from_lstm_architecture_config(
 
     assert captured["bidirectional"] is True
     assert captured["pooling"] == "masked_mean"
-    assert captured["preprocessing"] == "whitespace_v1"
+    assert captured["preprocessing"] == "regex_v2"
     assert metrics["f1"] == 1.0

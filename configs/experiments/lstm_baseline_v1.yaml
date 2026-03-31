@@ -20,6 +20,7 @@ model:
   hidden_dim: 128
   bidirectional: false
   pooling: last_hidden
+  preprocessing: regex_v2
   batch_size: 32
   epochs: 5
   dropout: 0.3

@@ -10,7 +10,11 @@ from sklearn.pipeline import Pipeline
 from imdb_sentiment.artifacts.lstm import load_lstm_artifact_sidecars
 from imdb_sentiment.data.dataset import load_imdb_dataset
 from imdb_sentiment.data.lstm import LSTMVocabulary, build_lstm_dataloader
-from imdb_sentiment.inference.predict import load_model
+from imdb_sentiment.inference.predict import (
+    _load_lstm_decision_threshold,
+    _load_lstm_model_config_from_training_payload,
+    load_model,
+)
 from imdb_sentiment.models.lstm.model import build_lstm_model
 from imdb_sentiment.settings import AppConfig, LSTMModelConfig
 
@@ -96,10 +100,8 @@ def _evaluate_lstm_model(config: AppConfig) -> dict[str, float]:
         config.paths.model_output
     )
     vocabulary = LSTMVocabulary(token_to_id=vocabulary_payload)
-    serialized_model = training_config_payload.get("model")
-    if not isinstance(serialized_model, dict):
-        raise ValueError("training_config.json must contain a model mapping.")
-    max_length = int(serialized_model["max_length"])
+    decision_threshold = _load_lstm_decision_threshold(_artifact_contract.threshold_tuning_output)
+    model_config = _load_lstm_model_config_from_training_payload(training_config_payload)
 
     dataset = load_imdb_dataset()
     test_split = dataset["test"]
@@ -109,12 +111,13 @@ def _evaluate_lstm_model(config: AppConfig) -> dict[str, float]:
         texts=x_test,
         labels=y_test,
         vocabulary=vocabulary,
-        max_length=max_length,
+        max_length=model_config.max_length,
         batch_size=config.model.batch_size,
         shuffle=False,
+        preprocessing=model_config.preprocessing,
         seed=config.seed,
     )
-    model = build_lstm_model(config.model)
+    model = build_lstm_model(model_config)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.to(device)
     model.eval()
@@ -124,7 +127,7 @@ def _evaluate_lstm_model(config: AppConfig) -> dict[str, float]:
         for token_ids, _labels in dataloader:
             token_ids, _labels = _move_batch_to_device(token_ids, _labels, device)
             logits = model(token_ids)
-            predictions = torch.sigmoid(logits).ge(0.5).to(dtype=torch.int64)
+            predictions = torch.sigmoid(logits).ge(decision_threshold).to(dtype=torch.int64)
             all_predictions.extend(predictions.cpu().tolist())
 
     return _evaluate_predictions(y_test, all_predictions)

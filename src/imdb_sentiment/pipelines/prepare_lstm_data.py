@@ -7,8 +7,11 @@ from pathlib import Path
 from datasets import Dataset, DatasetDict
 
 from imdb_sentiment.data.dataset import load_imdb_dataset
+from imdb_sentiment.features.lstm_preprocessing import tokenize_lstm_text
 from imdb_sentiment.features.preprocess import normalize_review_text
 from imdb_sentiment.settings import AppConfig, LSTMModelConfig
+
+LSTM_PREPARED_DATA_PIPELINE_ROLE = "export_only"
 
 
 @dataclass(slots=True)
@@ -38,7 +41,13 @@ def _split_lstm_dataset(seed: int) -> DatasetDict:
     )
 
 
-def _write_jsonl(path: Path, split: Dataset) -> int:
+def _serialize_lstm_text(text: str, preprocessing: str) -> str:
+    if preprocessing == "whitespace_v1":
+        return normalize_review_text(text)
+    return " ".join(tokenize_lstm_text(text, preprocessing=preprocessing))
+
+
+def _write_jsonl(path: Path, split: Dataset, preprocessing: str) -> int:
     _ensure_parent_dir(path)
 
     row_count = 0
@@ -47,7 +56,7 @@ def _write_jsonl(path: Path, split: Dataset) -> int:
             sink.write(
                 json.dumps(
                     {
-                        "text": normalize_review_text(text),
+                        "text": _serialize_lstm_text(text, preprocessing=preprocessing),
                         "label": int(label),
                     },
                     ensure_ascii=False,
@@ -69,6 +78,12 @@ def prepare_lstm_data(
     config: AppConfig,
     output_dir: str | Path | None = None,
 ) -> dict[str, Path]:
+    """Export LSTM-ready JSONL snapshots for inspection or external reuse.
+
+    The main LSTM training pipeline still reads the IMDb dataset directly and
+    creates its own train/validation split. These exported files are an
+    auxiliary artifact bundle, not the source of truth for `run_lstm_training`.
+    """
     if not isinstance(config.model, LSTMModelConfig):
         raise TypeError("LSTM data preparation expects LSTMModelConfig")
 
@@ -80,9 +95,9 @@ def prepare_lstm_data(
     test_path = resolved_output_dir / "test.jsonl"
     metadata_path = resolved_output_dir / "metadata.json"
 
-    train_rows = _write_jsonl(train_path, dataset["train"])
-    val_rows = _write_jsonl(val_path, dataset["val"])
-    test_rows = _write_jsonl(test_path, dataset["test"])
+    train_rows = _write_jsonl(train_path, dataset["train"], preprocessing=config.model.preprocessing)
+    val_rows = _write_jsonl(val_path, dataset["val"], preprocessing=config.model.preprocessing)
+    test_rows = _write_jsonl(test_path, dataset["test"], preprocessing=config.model.preprocessing)
 
     metadata = {
         "family": config.experiment.family,
@@ -97,6 +112,9 @@ def prepare_lstm_data(
         "vocab_size": config.model.vocab_size,
         "batch_size": config.model.batch_size,
         "epochs": config.model.epochs,
+        "preprocessing": config.model.preprocessing,
+        "pipeline_role": LSTM_PREPARED_DATA_PIPELINE_ROLE,
+        "used_by_training": False,
     }
     _ensure_parent_dir(metadata_path)
     metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
