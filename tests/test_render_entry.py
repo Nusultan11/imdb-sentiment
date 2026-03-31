@@ -56,3 +56,9 @@ def test_render_entry_rejects_non_integer_port(monkeypatch) -> None:
 
     with pytest.raises(ValueError, match="PORT environment variable must be an integer."):
         render_entry_module._read_render_port()
+
+
+def test_render_entry_defaults_to_tuned_tfidf_web_config(monkeypatch) -> None:
+    monkeypatch.delenv("IMDB_CONFIG", raising=False)
+
+    assert render_entry_module.DEFAULT_RENDER_CONFIG == "configs/experiments/tfidf_tuned_v2_final.yaml"

@@ -1,0 +1,17 @@
+{
+  "winner_model": "tuned_v2_final",
+  "winner_family": "tfidf",
+  "selection_rule": "highest_test_f1_then_accuracy_then_precision_then_recall",
+  "metrics": {
+    "accuracy": 0.89788,
+    "precision": 0.8966424754765133,
+    "recall": 0.89944,
+    "f1": 0.8980390590678542
+  },
+  "runtime_details": {
+    "preprocessing": "sklearn_pipeline_internal",
+    "pooling": null,
+    "bidirectional": null,
+    "decision_threshold": null
+  }
+}

@@ -3,9 +3,9 @@ services:
     name: imdb-sentiment-web
     runtime: python
     plan: free
-    buildCommand: pip install --upgrade pip && pip install . && python -m imdb_sentiment.cli train --config configs/baseline.yaml
+    buildCommand: pip install --upgrade pip && pip install . && python -m imdb_sentiment.cli train --config configs/experiments/tfidf_tuned_v2_final.yaml
     startCommand: python -m imdb_sentiment.render_entry
     healthCheckPath: /
     envVars:
       - key: IMDB_CONFIG
-        value: configs/baseline.yaml
+        value: configs/experiments/tfidf_tuned_v2_final.yaml

@@ -1,0 +1,67 @@
+[
+  {
+    "model":"tuned_v2_final",
+    "family":"tfidf",
+    "accuracy":0.89788,
+    "precision":0.8966424755,
+    "recall":0.89944,
+    "f1":0.8980390591,
+    "test_metrics_output":"C:\\Users\\nurs\\OneDrive\\\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b\\imdb-sentiment\\artifacts\\experiments\\tfidf\\tuned_v2_final\\test_metrics.json",
+    "preprocessing":"sklearn_pipeline_internal",
+    "pooling":null,
+    "bidirectional":null,
+    "decision_threshold":null
+  },
+  {
+    "model":"bidirectional_masked_mean_optuna_regexprep_v1",
+    "family":"lstm",
+    "accuracy":0.8848,
+    "precision":0.8651131016,
+    "recall":0.91176,
+    "f1":0.887824258,
+    "test_metrics_output":"C:\\Users\\nurs\\OneDrive\\\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b\\imdb-sentiment\\artifacts\\experiments\\lstm\\bidirectional_masked_mean_optuna_regexprep_v1\\test_metrics.json",
+    "preprocessing":"regex_v2",
+    "pooling":"masked_mean",
+    "bidirectional":true,
+    "decision_threshold":0.47
+  },
+  {
+    "model":"bidirectional_masked_mean_v1",
+    "family":"lstm",
+    "accuracy":0.87724,
+    "precision":0.8837796045,
+    "recall":0.86872,
+    "f1":0.876185097,
+    "test_metrics_output":"C:\\Users\\nurs\\OneDrive\\\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b\\imdb-sentiment\\artifacts\\experiments\\lstm\\bidirectional_masked_mean_v1\\test_metrics.json",
+    "preprocessing":"whitespace_v1",
+    "pooling":"masked_mean",
+    "bidirectional":true,
+    "decision_threshold":0.86
+  },
+  {
+    "model":"baseline_v1",
+    "family":"lstm",
+    "accuracy":0.8336,
+    "precision":0.8460006638,
+    "recall":0.81568,
+    "f1":0.8305637015,
+    "test_metrics_output":"C:\\Users\\nurs\\OneDrive\\\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b\\imdb-sentiment\\artifacts\\experiments\\lstm\\baseline_v1\\test_metrics.json",
+    "preprocessing":"whitespace_v1",
+    "pooling":"last_hidden",
+    "bidirectional":false,
+    "decision_threshold":0.5
+  },
+  {
+    "model":"bidirectional_v1",
+    "family":"lstm",
+    "accuracy":0.83084,
+    "precision":0.8887113451,
+    "recall":0.7564,
+    "f1":0.8172349713,
+    "test_metrics_output":"C:\\Users\\nurs\\OneDrive\\\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b\\imdb-sentiment\\artifacts\\experiments\\lstm\\bidirectional_v1\\test_metrics.json",
+    "preprocessing":"whitespace_v1",
+    "pooling":"last_hidden",
+    "bidirectional":true,
+    "decision_threshold":0.5
+  }
+]

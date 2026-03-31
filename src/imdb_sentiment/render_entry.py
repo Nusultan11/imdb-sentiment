@@ -6,7 +6,7 @@ from imdb_sentiment.settings import load_config
 from imdb_sentiment.webapp import serve_review_classifier
 
 
-DEFAULT_RENDER_CONFIG = "configs/baseline.yaml"
+DEFAULT_RENDER_CONFIG = "configs/experiments/tfidf_tuned_v2_final.yaml"
 DEFAULT_RENDER_HOST = "0.0.0.0"
 DEFAULT_RENDER_PORT = 10000
 

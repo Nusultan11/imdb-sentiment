@@ -20,7 +20,7 @@ model:
   hidden_dim: 128
   bidirectional: true
   pooling: masked_mean
-  preprocessing: whitespace_v1
+  preprocessing: regex_v2
   batch_size: 32
   epochs: 5
   dropout: 0.3

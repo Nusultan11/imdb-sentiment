@@ -1,0 +1,6 @@
+model,family,accuracy,precision,recall,f1,test_metrics_output,preprocessing,pooling,bidirectional,decision_threshold
+tuned_v2_final,tfidf,0.89788,0.8966424754765133,0.89944,0.8980390590678542,C:\Users\nurs\OneDrive\Рабочий стол\imdb-sentiment\artifacts\experiments\tfidf\tuned_v2_final\test_metrics.json,sklearn_pipeline_internal,,,
+bidirectional_masked_mean_optuna_regexprep_v1,lstm,0.8848,0.865113101563686,0.91176,0.8878242580042066,C:\Users\nurs\OneDrive\Рабочий стол\imdb-sentiment\artifacts\experiments\lstm\bidirectional_masked_mean_optuna_regexprep_v1\test_metrics.json,regex_v2,masked_mean,True,0.47
+bidirectional_masked_mean_v1,lstm,0.87724,0.8837796044599984,0.86872,0.8761850970266672,C:\Users\nurs\OneDrive\Рабочий стол\imdb-sentiment\artifacts\experiments\lstm\bidirectional_masked_mean_v1\test_metrics.json,whitespace_v1,masked_mean,True,0.86
+baseline_v1,lstm,0.8336,0.8460006637902423,0.81568,0.8305637015314434,C:\Users\nurs\OneDrive\Рабочий стол\imdb-sentiment\artifacts\experiments\lstm\baseline_v1\test_metrics.json,whitespace_v1,last_hidden,False,0.5
+bidirectional_v1,lstm,0.83084,0.8887113450512266,0.7564,0.8172349712606422,C:\Users\nurs\OneDrive\Рабочий стол\imdb-sentiment\artifacts\experiments\lstm\bidirectional_v1\test_metrics.json,whitespace_v1,last_hidden,True,0.5

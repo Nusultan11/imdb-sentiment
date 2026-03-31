@@ -1,5 +1,5 @@
 param(
-    [string]$Config = "configs/baseline.yaml",
+    [string]$Config = "configs/experiments/tfidf_tuned_v2_final.yaml",
     [string]$ServerHost = "127.0.0.1",
     [int]$Port = 8000,
     [switch]$PrintOnly

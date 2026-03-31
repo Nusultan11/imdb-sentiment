@@ -6,6 +6,7 @@ import joblib
 import torch
 
 import imdb_sentiment.pipelines.evaluation as evaluation_module
+import imdb_sentiment.pipelines.model_comparison as comparison_module
 import imdb_sentiment.pipelines.prepare_lstm_data as prepare_lstm_data_module
 import imdb_sentiment.cli as cli_module
 from imdb_sentiment.data.lstm import build_lstm_vocabulary
@@ -412,6 +413,89 @@ def test_cli_serve_web_uses_config_model_path(tmp_path, monkeypatch) -> None:
         "host": "0.0.0.0",
         "port": 9001,
     }
+
+
+def test_cli_import_lstm_bundle_outputs_imported_paths(tmp_path, monkeypatch, capsys) -> None:
+    config_path = tmp_path / "lstm.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "experiment:",
+                "  family: lstm",
+                "  name: regex_bundle_test",
+                "seed: 42",
+                "paths:",
+                f"  model_output: {(tmp_path / 'artifacts' / 'models' / 'model.pt').as_posix()}",
+                f"  val_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'val_metrics.json').as_posix()}",
+                f"  test_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'test_metrics.json').as_posix()}",
+                "model:",
+                "  type: lstm",
+                "  vocab_size: 50",
+                "  max_length: 6",
+                "  embedding_dim: 8",
+                "  hidden_dim: 6",
+                "  bidirectional: true",
+                "  pooling: masked_mean",
+                "  preprocessing: regex_v2",
+                "  batch_size: 2",
+                "  epochs: 2",
+                "  dropout: 0.2",
+                "  lr: 0.01",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        cli_module,
+        "import_lstm_bundle",
+        lambda config, bundle_path: {"model.pt": bundle_path},
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "imdb-sentiment",
+            "import-lstm-bundle",
+            "--config",
+            str(config_path),
+            "--bundle",
+            str(tmp_path / "bundle.zip"),
+        ],
+    )
+
+    cli_module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload == {"model.pt": str(tmp_path / "bundle.zip")}
+
+
+def test_cli_compare_models_outputs_report_json(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        cli_module,
+        "compare_models",
+        lambda config_paths, output_dir: {
+            "results": [{"model": "tfidf_best"}],
+            "missing": [],
+            "winner": {"winner_model": "tfidf_best"},
+            "outputs": {"winner_summary_json": "reports/winner_summary.json"},
+        },
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "imdb-sentiment",
+            "compare-models",
+            "--config",
+            "configs/experiments/tfidf_tuned_v2_final.yaml",
+            "--config",
+            "configs/experiments/lstm_bidirectional_masked_mean_optuna_regexprep_v1.yaml",
+        ],
+    )
+
+    cli_module.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["winner"] == {"winner_model": "tfidf_best"}
 
 
 def test_cli_predict_routes_tfidf_family_to_sklearn_predict(tmp_path, monkeypatch, capsys) -> None:

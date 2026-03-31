@@ -10,9 +10,10 @@ from imdb_sentiment.inference.predict import (
     predict_texts,
 )
 from imdb_sentiment.pipelines.evaluation import run_evaluation
+from imdb_sentiment.pipelines.model_comparison import compare_models, import_lstm_bundle
 from imdb_sentiment.pipelines.prepare_data import prepare_training_data
 from imdb_sentiment.pipelines.train import run_training
-from imdb_sentiment.settings import LSTMModelConfig, load_config
+from imdb_sentiment.settings import AppConfig, LSTMModelConfig, load_config
 from imdb_sentiment.webapp import serve_review_classifier
 
 
@@ -65,6 +66,37 @@ def _build_parser() -> argparse.ArgumentParser:
         "--output-dir",
         default=None,
         help="Optional prepared data output directory override",
+    )
+
+    import_lstm_bundle_parser = subparsers.add_parser(
+        "import-lstm-bundle",
+        help="Import a downloaded LSTM artifact bundle into the configured experiment directory",
+    )
+    import_lstm_bundle_parser.add_argument(
+        "--config",
+        required=True,
+        help="Path to the target LSTM YAML config file",
+    )
+    import_lstm_bundle_parser.add_argument(
+        "--bundle",
+        required=True,
+        help="Path to the downloaded LSTM bundle zip file",
+    )
+
+    compare_models_parser = subparsers.add_parser(
+        "compare-models",
+        help="Evaluate multiple saved experiments on the IMDb test split and write a comparison report",
+    )
+    compare_models_parser.add_argument(
+        "--config",
+        action="append",
+        required=True,
+        help="Path to a YAML config file. Repeat --config to compare multiple models.",
+    )
+    compare_models_parser.add_argument(
+        "--output-dir",
+        default=None,
+        help="Optional comparison report directory override",
     )
 
     web_parser = subparsers.add_parser(
@@ -147,6 +179,23 @@ def _run_prepare_data_command(config_path: str, output_dir: str | None) -> None:
     print(json.dumps(serialized_paths, ensure_ascii=False))
 
 
+def _require_lstm_cli_config(config: AppConfig) -> None:
+    if not isinstance(config.model, LSTMModelConfig):
+        raise TypeError("CLI LSTM bundle import expects LSTMModelConfig.")
+
+
+def _run_import_lstm_bundle_command(config_path: str, bundle_path: str) -> None:
+    config = load_config(config_path)
+    _require_lstm_cli_config(config)
+    imported_paths = import_lstm_bundle(config, bundle_path)
+    print(json.dumps(imported_paths, ensure_ascii=False))
+
+
+def _run_compare_models_command(config_paths: list[str], output_dir: str | None) -> None:
+    report = compare_models(config_paths, output_dir=output_dir)
+    print(json.dumps(report, ensure_ascii=False))
+
+
 def _run_serve_web_command(config_path: str, host: str, port: int) -> None:
     config = load_config(config_path)
     serve_review_classifier(config.paths.model_output, host=host, port=port)
@@ -171,6 +220,14 @@ def main() -> None:
 
     if args.command == "prepare-data":
         _run_prepare_data_command(args.config, args.output_dir)
+        return
+
+    if args.command == "import-lstm-bundle":
+        _run_import_lstm_bundle_command(args.config, args.bundle)
+        return
+
+    if args.command == "compare-models":
+        _run_compare_models_command(args.config, args.output_dir)
         return
 
     if args.command == "serve-web":
