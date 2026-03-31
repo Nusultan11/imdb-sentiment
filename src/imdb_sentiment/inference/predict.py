@@ -74,6 +74,7 @@ def _load_lstm_model_config_from_training_payload(
     model_payload = dict(serialized_model)
     model_payload.setdefault("bidirectional", False)
     model_payload.setdefault("pooling", "last_hidden")
+    model_payload.setdefault("preprocessing", "whitespace_v1")
     return _load_lstm_model_config(model_payload)
 
 

@@ -103,6 +103,7 @@ def build_lstm_training_config_payload(
             "lr": model_config.lr,
             "bidirectional": model_config.bidirectional,
             "pooling": model_config.pooling,
+            "preprocessing": model_config.preprocessing,
         },
         "artifacts": {
             "model_output": artifact_contract.model_output.name,

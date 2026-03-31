@@ -112,3 +112,47 @@ def test_build_lstm_dataloader_returns_batched_tensors() -> None:
     assert labels.dtype == torch.float32
     assert token_ids.shape == (2, 4)
     assert labels.shape == (2,)
+
+
+@pytest.mark.parametrize("preprocessing", ["whitespace_v1", "regex_v2"])
+def test_lstm_data_pipeline_smoke_supports_multiple_preprocessing_modes(
+    preprocessing: str,
+) -> None:
+    texts = [
+        "Amazing!!! movie",
+        "don't like it",
+        "worst-film-ever",
+        "It was <br /> good",
+    ]
+    labels = [1, 0, 0, 1]
+
+    vocabulary = build_lstm_vocabulary(
+        texts=texts,
+        max_size=20,
+        preprocessing=preprocessing,
+    )
+    encoded = encode_lstm_text(
+        text="don't like it",
+        vocabulary=vocabulary,
+        max_length=5,
+        preprocessing=preprocessing,
+    )
+    dataloader = build_lstm_dataloader(
+        texts=texts,
+        labels=labels,
+        vocabulary=vocabulary,
+        max_length=5,
+        batch_size=2,
+        shuffle=False,
+        preprocessing=preprocessing,
+    )
+    token_ids, batch_labels = next(iter(dataloader))
+
+    assert len(encoded) == 5
+    assert encoded[-1] == vocabulary.pad_id
+    assert vocabulary.pad_id == 0
+    assert vocabulary.unk_id == 1
+    assert token_ids.dtype == torch.long
+    assert batch_labels.dtype == torch.float32
+    assert token_ids.shape == (2, 5)
+    assert batch_labels.shape == (2,)

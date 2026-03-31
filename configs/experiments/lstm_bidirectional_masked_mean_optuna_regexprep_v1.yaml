@@ -1,0 +1,27 @@
+experiment:
+  family: lstm
+  name: bidirectional_masked_mean_optuna_regexprep_v1
+
+seed: 42
+
+paths:
+  model_output: artifacts/experiments/lstm/bidirectional_masked_mean_optuna_regexprep_v1/model.pt
+  val_metrics_output: artifacts/experiments/lstm/bidirectional_masked_mean_optuna_regexprep_v1/val_metrics.json
+  test_metrics_output: artifacts/experiments/lstm/bidirectional_masked_mean_optuna_regexprep_v1/test_metrics.json
+# Keep regex-preprocessing Optuna-tuned BiLSTM artifacts flat in this directory:
+# runtime files -> model.pt, vocab.json, training_config.json, training_history.json, threshold_tuning.json, val_metrics.json, test_metrics.json
+# optional export files -> experiment zips or notebooks if you save them later
+
+model:
+  type: lstm
+  vocab_size: 30000
+  max_length: 512
+  embedding_dim: 128
+  hidden_dim: 128
+  bidirectional: true
+  pooling: masked_mean
+  preprocessing: regex_v2
+  batch_size: 16
+  epochs: 5
+  dropout: 0.5
+  lr: 0.002074566765675252

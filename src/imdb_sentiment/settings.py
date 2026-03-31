@@ -11,6 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 LSTMPoolingType = Literal["last_hidden", "masked_mean"]
+LSTMPreprocessingType = Literal["whitespace_v1", "regex_v2"]
 
 
 @dataclass(slots=True)
@@ -47,6 +48,7 @@ class LSTMModelConfig:
     lr: float
     bidirectional: bool
     pooling: LSTMPoolingType = "last_hidden"
+    preprocessing: LSTMPreprocessingType = "whitespace_v1"
 
 
 @dataclass(slots=True)
@@ -132,6 +134,15 @@ def _require_lstm_pooling(value: Any, name: str) -> str:
     return value
 
 
+def _require_lstm_preprocessing(value: Any, name: str) -> str:
+    allowed = {"whitespace_v1", "regex_v2"}
+    if value is None:
+        return "whitespace_v1"
+    if not isinstance(value, str) or value not in allowed:
+        raise ValueError(f"{name} must be one of: {sorted(allowed)}")
+    return value
+
+
 def _require_ngram_range(value: Any, name: str) -> tuple[int, int]:
     if not isinstance(value, list) or len(value) != 2 or not all(isinstance(v, int) for v in value):
         raise ValueError(f"{name} must be a list of two integers")
@@ -187,6 +198,10 @@ def _load_lstm_model_config(model_payload: dict[str, Any]) -> LSTMModelConfig:
         lr=_require_positive_float(model_payload.get("lr"), "model.lr"),
         bidirectional=_require_bool(model_payload.get("bidirectional"), "model.bidirectional"),
         pooling=_require_lstm_pooling(model_payload.get("pooling"), "model.pooling"),
+        preprocessing=_require_lstm_preprocessing(
+            model_payload.get("preprocessing"),
+            "model.preprocessing",
+        ),
     )
 
 

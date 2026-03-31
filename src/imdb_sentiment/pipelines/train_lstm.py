@@ -231,6 +231,7 @@ def run_lstm_training(config: AppConfig) -> dict[str, float]:
     vocabulary = build_lstm_vocabulary(
         texts=x_train,
         max_size=config.model.vocab_size,
+        preprocessing=config.model.preprocessing,
     )
     train_dataloader = build_lstm_dataloader(
         texts=x_train,
@@ -239,6 +240,7 @@ def run_lstm_training(config: AppConfig) -> dict[str, float]:
         max_length=config.model.max_length,
         batch_size=config.model.batch_size,
         shuffle=True,
+        preprocessing=config.model.preprocessing,
         seed=config.seed,
     )
     val_dataloader = build_lstm_dataloader(
@@ -248,6 +250,7 @@ def run_lstm_training(config: AppConfig) -> dict[str, float]:
         max_length=config.model.max_length,
         batch_size=config.model.batch_size,
         shuffle=False,
+        preprocessing=config.model.preprocessing,
         seed=config.seed,
     )
 

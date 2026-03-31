@@ -147,6 +147,7 @@ def test_run_lstm_training_saves_best_checkpoint_and_metrics(
         "lr": 0.01,
         "bidirectional": False,
         "pooling": "last_hidden",
+        "preprocessing": "whitespace_v1",
     }
     assert saved_training_config["artifacts"] == {
         "model_output": "model.pt",
@@ -240,7 +241,11 @@ def test_run_lstm_training_builds_model_from_lstm_architecture_config(
     class _FakeVocabulary:
         token_to_id = {"<pad>": 0, "<unk>": 1}
 
-    monkeypatch.setattr(train_lstm_module, "build_lstm_vocabulary", lambda texts, max_size: _FakeVocabulary())
+    monkeypatch.setattr(
+        train_lstm_module,
+        "build_lstm_vocabulary",
+        lambda texts, max_size, preprocessing="whitespace_v1": _FakeVocabulary(),
+    )
     monkeypatch.setattr(train_lstm_module, "build_lstm_dataloader", lambda **kwargs: [("unused", "unused")])
 
     captured: dict[str, object] = {}
@@ -248,6 +253,7 @@ def test_run_lstm_training_builds_model_from_lstm_architecture_config(
     def _fake_build_lstm_model(model_config):
         captured["bidirectional"] = model_config.bidirectional
         captured["pooling"] = model_config.pooling
+        captured["preprocessing"] = model_config.preprocessing
         return torch.nn.Linear(1, 1)
 
     monkeypatch.setattr(train_lstm_module, "build_lstm_model", _fake_build_lstm_model)
@@ -274,4 +280,5 @@ def test_run_lstm_training_builds_model_from_lstm_architecture_config(
 
     assert captured["bidirectional"] is True
     assert captured["pooling"] == "masked_mean"
+    assert captured["preprocessing"] == "whitespace_v1"
     assert metrics["f1"] == 1.0

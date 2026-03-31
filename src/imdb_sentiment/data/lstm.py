@@ -4,7 +4,7 @@ from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
-from imdb_sentiment.features.preprocess import normalize_review_text
+from imdb_sentiment.features.lstm_preprocessing import tokenize_lstm_text as dispatch_lstm_text
 
 try:
     import torch
@@ -24,11 +24,8 @@ PAD_TOKEN = "<pad>"
 UNK_TOKEN = "<unk>"
 
 
-def tokenize_lstm_text(text: str) -> list[str]:
-    normalized_text = normalize_review_text(text)
-    if not normalized_text:
-        return []
-    return normalized_text.split(" ")
+def tokenize_lstm_text(text: str, preprocessing: str = "whitespace_v1") -> list[str]:
+    return dispatch_lstm_text(text, preprocessing=preprocessing)
 
 
 @dataclass(slots=True)
@@ -54,6 +51,7 @@ def build_lstm_vocabulary(
     texts: Iterable[str],
     max_size: int,
     min_frequency: int = 1,
+    preprocessing: str = "whitespace_v1",
 ) -> LSTMVocabulary:
     if max_size < 2:
         raise ValueError("max_size must be at least 2 to fit pad and unk tokens.")
@@ -62,7 +60,7 @@ def build_lstm_vocabulary(
 
     token_counter: Counter[str] = Counter()
     for text in texts:
-        token_counter.update(tokenize_lstm_text(text))
+        token_counter.update(tokenize_lstm_text(text, preprocessing=preprocessing))
 
     token_to_id = {
         PAD_TOKEN: 0,
@@ -88,11 +86,15 @@ def encode_lstm_text(
     text: str,
     vocabulary: LSTMVocabulary,
     max_length: int,
+    preprocessing: str = "whitespace_v1",
 ) -> list[int]:
     if max_length < 1:
         raise ValueError("max_length must be at least 1.")
 
-    token_ids = [vocabulary.lookup_token_id(token) for token in tokenize_lstm_text(text)]
+    token_ids = [
+        vocabulary.lookup_token_id(token)
+        for token in tokenize_lstm_text(text, preprocessing=preprocessing)
+    ]
     token_ids = token_ids[:max_length]
     padding_length = max_length - len(token_ids)
     if padding_length > 0:
@@ -117,6 +119,7 @@ if torch is not None:
             labels: Sequence[int],
             vocabulary: LSTMVocabulary,
             max_length: int,
+            preprocessing: str = "whitespace_v1",
         ) -> None:
             if len(texts) != len(labels):
                 raise ValueError("texts and labels must have the same length.")
@@ -124,6 +127,7 @@ if torch is not None:
             self._labels = [int(label) for label in labels]
             self._vocabulary = vocabulary
             self._max_length = max_length
+            self._preprocessing = preprocessing
 
         def __len__(self) -> int:
             return len(self._texts)
@@ -133,6 +137,7 @@ if torch is not None:
                 text=self._texts[index],
                 vocabulary=self._vocabulary,
                 max_length=self._max_length,
+                preprocessing=self._preprocessing,
             )
             return (
                 torch.tensor(token_ids, dtype=torch.long),
@@ -153,6 +158,7 @@ def build_lstm_dataloader(
     max_length: int,
     batch_size: int,
     shuffle: bool,
+    preprocessing: str = "whitespace_v1",
     seed: int | None = None,
 ) -> DataLoader:
     _require_torch()
@@ -164,6 +170,7 @@ def build_lstm_dataloader(
         labels=labels,
         vocabulary=vocabulary,
         max_length=max_length,
+        preprocessing=preprocessing,
     )
     generator = None
     if seed is not None:

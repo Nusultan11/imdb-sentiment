@@ -35,6 +35,18 @@ This separation keeps the baseline honest:
 
 ---
 
+## LSTM Experiments
+
+- Built a baseline 1-layer LSTM for IMDb sentiment classification
+- Improved it with bidirectional encoding
+- Replaced last hidden aggregation with `masked_mean` pooling
+- Tuned key hyperparameters with Optuna on the strongest masked-mean BiLSTM branch
+- Best archived validation result for the LSTM family: `F1 = 0.8952`
+
+See: [lstm_experiments.md](/C:/Users/nurs/OneDrive/Рабочий%20стол/imdb-sentiment/docs/experiments/lstm_experiments.md)
+
+---
+
 ## Project layout
 
 ```text
