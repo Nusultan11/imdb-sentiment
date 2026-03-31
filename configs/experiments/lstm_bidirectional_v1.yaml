@@ -19,6 +19,7 @@ model:
   embedding_dim: 128
   hidden_dim: 128
   bidirectional: true
+  pooling: last_hidden
   batch_size: 32
   epochs: 5
   dropout: 0.3

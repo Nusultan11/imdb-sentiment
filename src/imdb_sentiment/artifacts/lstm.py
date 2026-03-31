@@ -15,6 +15,7 @@ class LSTMArtifactContract:
     vocab_output: Path
     training_config_output: Path
     training_history_output: Path
+    threshold_tuning_output: Path
     val_metrics_output: Path
     test_metrics_output: Path
 
@@ -50,6 +51,7 @@ def resolve_lstm_artifact_contract(config: AppConfig) -> LSTMArtifactContract:
         vocab_output=artifact_dir / "vocab.json",
         training_config_output=artifact_dir / "training_config.json",
         training_history_output=artifact_dir / "training_history.json",
+        threshold_tuning_output=artifact_dir / "threshold_tuning.json",
         val_metrics_output=config.paths.val_metrics_output,
         test_metrics_output=config.paths.test_metrics_output,
     )
@@ -64,6 +66,7 @@ def resolve_lstm_artifact_contract_from_model_path(model_path: str | Path) -> LS
         vocab_output=artifact_dir / "vocab.json",
         training_config_output=artifact_dir / "training_config.json",
         training_history_output=artifact_dir / "training_history.json",
+        threshold_tuning_output=artifact_dir / "threshold_tuning.json",
         val_metrics_output=artifact_dir / "val_metrics.json",
         test_metrics_output=artifact_dir / "test_metrics.json",
     )
@@ -99,12 +102,14 @@ def build_lstm_training_config_payload(
             "dropout": model_config.dropout,
             "lr": model_config.lr,
             "bidirectional": model_config.bidirectional,
+            "pooling": model_config.pooling,
         },
         "artifacts": {
             "model_output": artifact_contract.model_output.name,
             "vocab_output": artifact_contract.vocab_output.name,
             "training_config_output": artifact_contract.training_config_output.name,
             "training_history_output": artifact_contract.training_history_output.name,
+            "threshold_tuning_output": artifact_contract.threshold_tuning_output.name,
             "val_metrics_output": artifact_contract.val_metrics_output.name,
             "test_metrics_output": artifact_contract.test_metrics_output.name,
         },
@@ -118,6 +123,13 @@ def build_lstm_training_config_payload(
             artifact_contract.vocab_output.name,
             artifact_contract.training_config_output.name,
         ],
+    }
+
+
+def build_lstm_threshold_tuning_payload(decision_threshold: float = 0.5) -> dict[str, object]:
+    return {
+        "decision_threshold": decision_threshold,
+        "selection_strategy": "fixed_default",
     }
 
 

@@ -114,6 +114,7 @@ def test_load_config_supports_lstm_family_specific_fields(tmp_path: Path) -> Non
     assert config.model.embedding_dim == 128
     assert config.model.hidden_dim == 128
     assert config.model.bidirectional is False
+    assert config.model.pooling == "last_hidden"
     assert config.model.batch_size == 32
     assert config.model.epochs == 5
     assert config.model.dropout == 0.3
@@ -156,6 +157,76 @@ def test_load_config_supports_bidirectional_lstm_experiment_field(tmp_path: Path
 
     assert isinstance(config.model, LSTMModelConfig)
     assert config.model.bidirectional is True
+
+
+def test_load_config_supports_explicit_lstm_pooling_field(tmp_path: Path) -> None:
+    config_path = tmp_path / "lstm_masked_mean.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "experiment:",
+                "  family: lstm",
+                "  name: masked_mean_test",
+                "seed: 42",
+                "paths:",
+                f"  model_output: {(tmp_path / 'artifacts' / 'models' / 'model.pt').as_posix()}",
+                f"  val_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'val_metrics.json').as_posix()}",
+                f"  test_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'test_metrics.json').as_posix()}",
+                "model:",
+                "  type: lstm",
+                "  vocab_size: 30000",
+                "  max_length: 512",
+                "  embedding_dim: 128",
+                "  hidden_dim: 128",
+                "  bidirectional: true",
+                "  pooling: masked_mean",
+                "  batch_size: 32",
+                "  epochs: 5",
+                "  dropout: 0.3",
+                "  lr: 0.001",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_config(config_path)
+
+    assert isinstance(config.model, LSTMModelConfig)
+    assert config.model.pooling == "masked_mean"
+
+
+def test_repository_uses_separate_masked_mean_lstm_experiment_config() -> None:
+    bidirectional_config_path = Path("configs/experiments/lstm_bidirectional_v1.yaml")
+    masked_mean_config_path = Path("configs/experiments/lstm_bidirectional_masked_mean_v1.yaml")
+
+    assert bidirectional_config_path.name == "lstm_bidirectional_v1.yaml"
+    assert masked_mean_config_path.name == "lstm_bidirectional_masked_mean_v1.yaml"
+    assert bidirectional_config_path.exists()
+    assert masked_mean_config_path.exists()
+
+    bidirectional_config = load_config(bidirectional_config_path)
+    masked_mean_config = load_config(masked_mean_config_path)
+
+    assert isinstance(bidirectional_config.model, LSTMModelConfig)
+    assert isinstance(masked_mean_config.model, LSTMModelConfig)
+    assert bidirectional_config.experiment.name == "bidirectional_v1"
+    assert masked_mean_config.experiment.name == "bidirectional_masked_mean_v1"
+    assert bidirectional_config.model.bidirectional is True
+    assert masked_mean_config.model.bidirectional is True
+    assert bidirectional_config.model.pooling == "last_hidden"
+    assert masked_mean_config.model.pooling == "masked_mean"
+    assert bidirectional_config.paths.model_output != masked_mean_config.paths.model_output
+    assert bidirectional_config.paths.model_output == (
+        settings_module.PROJECT_ROOT / "artifacts/experiments/lstm/bidirectional_v1/model.pt"
+    )
+    assert masked_mean_config.paths.model_output == (
+        settings_module.PROJECT_ROOT
+        / "artifacts/experiments/lstm/bidirectional_masked_mean_v1/model.pt"
+    )
+    assert bidirectional_config.paths.model_output.name == "model.pt"
+    assert masked_mean_config.paths.model_output.name == "model.pt"
+    assert bidirectional_config.paths.model_output.parent.name == "bidirectional_v1"
+    assert masked_mean_config.paths.model_output.parent.name == "bidirectional_masked_mean_v1"
 
 
 def test_load_config_rejects_missing_bidirectional_field(tmp_path: Path) -> None:
@@ -253,6 +324,43 @@ def test_load_config_rejects_non_boolean_bidirectional_string(tmp_path: Path) ->
     )
 
     with pytest.raises(ValueError, match="model.bidirectional must be a boolean"):
+        load_config(config_path)
+
+
+def test_load_config_rejects_invalid_lstm_pooling_value(tmp_path: Path) -> None:
+    config_path = tmp_path / "lstm_invalid_pooling.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "experiment:",
+                "  family: lstm",
+                "  name: invalid_pooling_test",
+                "seed: 42",
+                "paths:",
+                f"  model_output: {(tmp_path / 'artifacts' / 'models' / 'model.pt').as_posix()}",
+                f"  val_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'val_metrics.json').as_posix()}",
+                f"  test_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'test_metrics.json').as_posix()}",
+                "model:",
+                "  type: lstm",
+                "  vocab_size: 30000",
+                "  max_length: 512",
+                "  embedding_dim: 128",
+                "  hidden_dim: 128",
+                "  bidirectional: true",
+                "  pooling: attention",
+                "  batch_size: 32",
+                "  epochs: 5",
+                "  dropout: 0.3",
+                "  lr: 0.001",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=r"model\.pooling must be one of: \['last_hidden', 'masked_mean'\]",
+    ):
         load_config(config_path)
 
 

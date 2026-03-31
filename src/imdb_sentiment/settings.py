@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+LSTMPoolingType = Literal["last_hidden", "masked_mean"]
 
 
 @dataclass(slots=True)
@@ -43,6 +46,7 @@ class LSTMModelConfig:
     dropout: float
     lr: float
     bidirectional: bool
+    pooling: LSTMPoolingType = "last_hidden"
 
 
 @dataclass(slots=True)
@@ -119,6 +123,15 @@ def _require_bool(value: Any, name: str) -> bool:
     return value
 
 
+def _require_lstm_pooling(value: Any, name: str) -> str:
+    allowed = {"last_hidden", "masked_mean"}
+    if value is None:
+        return "last_hidden"
+    if not isinstance(value, str) or value not in allowed:
+        raise ValueError(f"{name} must be one of: {sorted(allowed)}")
+    return value
+
+
 def _require_ngram_range(value: Any, name: str) -> tuple[int, int]:
     if not isinstance(value, list) or len(value) != 2 or not all(isinstance(v, int) for v in value):
         raise ValueError(f"{name} must be a list of two integers")
@@ -173,6 +186,7 @@ def _load_lstm_model_config(model_payload: dict[str, Any]) -> LSTMModelConfig:
         dropout=_require_probability(model_payload.get("dropout"), "model.dropout"),
         lr=_require_positive_float(model_payload.get("lr"), "model.lr"),
         bidirectional=_require_bool(model_payload.get("bidirectional"), "model.bidirectional"),
+        pooling=_require_lstm_pooling(model_payload.get("pooling"), "model.pooling"),
     )
 
 

@@ -7,6 +7,7 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
 from imdb_sentiment.artifacts.lstm import (
     build_lstm_training_config_payload,
+    build_lstm_threshold_tuning_payload,
     resolve_lstm_artifact_contract,
     write_json_artifact,
 )
@@ -178,6 +179,10 @@ def _save_best_lstm_artifacts(
             config=config,
             artifact_contract=artifact_contract,
         ),
+    )
+    write_json_artifact(
+        artifact_contract.threshold_tuning_output,
+        build_lstm_threshold_tuning_payload(),
     )
     write_json_artifact(artifact_contract.val_metrics_output, metrics)
 

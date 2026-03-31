@@ -57,6 +57,7 @@ def test_run_lstm_training_saves_best_checkpoint_and_metrics(
                 "  embedding_dim: 8",
                 "  hidden_dim: 6",
                 "  bidirectional: false",
+                "  pooling: last_hidden",
                 "  batch_size: 2",
                 "  epochs: 2",
                 "  dropout: 0.2",
@@ -105,9 +106,11 @@ def test_run_lstm_training_saves_best_checkpoint_and_metrics(
     vocab_output = config.paths.model_output.parent / "vocab.json"
     training_config_output = config.paths.model_output.parent / "training_config.json"
     training_history_output = config.paths.model_output.parent / "training_history.json"
+    threshold_tuning_output = config.paths.model_output.parent / "threshold_tuning.json"
     assert vocab_output.exists()
     assert training_config_output.exists()
     assert training_history_output.exists()
+    assert threshold_tuning_output.exists()
 
     saved_metrics = json.loads(config.paths.val_metrics_output.read_text(encoding="utf-8"))
     assert saved_metrics == metrics
@@ -128,12 +131,14 @@ def test_run_lstm_training_saves_best_checkpoint_and_metrics(
         "dropout": 0.2,
         "lr": 0.01,
         "bidirectional": False,
+        "pooling": "last_hidden",
     }
     assert saved_training_config["artifacts"] == {
         "model_output": "model.pt",
         "vocab_output": "vocab.json",
         "training_config_output": "training_config.json",
         "training_history_output": "training_history.json",
+        "threshold_tuning_output": "threshold_tuning.json",
         "val_metrics_output": "val_metrics.json",
         "test_metrics_output": "test_metrics.json",
     }
@@ -148,12 +153,17 @@ def test_run_lstm_training_saves_best_checkpoint_and_metrics(
         "training_config.json",
     ]
     saved_training_history = json.loads(training_history_output.read_text(encoding="utf-8"))
+    saved_threshold_tuning = json.loads(threshold_tuning_output.read_text(encoding="utf-8"))
     assert saved_training_history["best_epoch"] == 1
     assert len(saved_training_history["history"]) == 2
     assert saved_training_history["history"][0]["epoch"] == 1
     assert "train_loss" in saved_training_history["history"][0]
     assert "val_loss" in saved_training_history["history"][0]
     assert "val_f1" in saved_training_history["history"][0]
+    assert saved_threshold_tuning == {
+        "decision_threshold": 0.5,
+        "selection_strategy": "fixed_default",
+    }
 
     checkpoint = torch.load(config.paths.model_output)
     assert set(checkpoint) == {"model_state_dict", "vocabulary", "max_length", "family", "name"}
@@ -163,7 +173,7 @@ def test_run_lstm_training_saves_best_checkpoint_and_metrics(
     assert "<pad>" in checkpoint["vocabulary"]
 
 
-def test_run_lstm_training_builds_model_from_bidirectional_config(
+def test_run_lstm_training_builds_model_from_lstm_architecture_config(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -186,6 +196,7 @@ def test_run_lstm_training_builds_model_from_bidirectional_config(
                 "  embedding_dim: 8",
                 "  hidden_dim: 6",
                 "  bidirectional: true",
+                "  pooling: masked_mean",
                 "  batch_size: 2",
                 "  epochs: 1",
                 "  dropout: 0.2",
@@ -223,6 +234,7 @@ def test_run_lstm_training_builds_model_from_bidirectional_config(
 
     def _fake_build_lstm_model(model_config):
         captured["bidirectional"] = model_config.bidirectional
+        captured["pooling"] = model_config.pooling
         return torch.nn.Linear(1, 1)
 
     monkeypatch.setattr(train_lstm_module, "build_lstm_model", _fake_build_lstm_model)
@@ -245,4 +257,5 @@ def test_run_lstm_training_builds_model_from_bidirectional_config(
     metrics = train_lstm_module.run_lstm_training(config)
 
     assert captured["bidirectional"] is True
+    assert captured["pooling"] == "masked_mean"
     assert metrics["f1"] == 1.0

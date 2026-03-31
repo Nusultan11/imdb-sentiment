@@ -7,12 +7,13 @@ from imdb_sentiment.settings import LSTMModelConfig
 try:
     import torch
     from torch import Tensor, nn
-    from torch.nn.utils.rnn import pack_padded_sequence
+    from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 except ImportError as exc:  # pragma: no cover - exercised only when torch is absent
     torch = None
     Tensor = object
     nn = None
     pack_padded_sequence = None
+    pad_packed_sequence = None
     TORCH_IMPORT_ERROR = exc
 else:
     TORCH_IMPORT_ERROR = None
@@ -28,11 +29,13 @@ if nn is not None:
             hidden_dim: int,
             dropout: float,
             bidirectional: bool,
+            pooling: str,
             padding_idx: int = 0,
         ) -> None:
             super().__init__()
             self.padding_idx = padding_idx
             self.bidirectional = bidirectional
+            self.pooling = pooling
             self.embedding = nn.Embedding(
                 num_embeddings=vocab_size,
                 embedding_dim=embedding_dim,
@@ -48,24 +51,45 @@ if nn is not None:
             self.dropout = nn.Dropout(p=dropout)
             self.classifier = nn.Linear(classifier_input_dim, 1)
 
-        def forward(self, token_ids: Tensor) -> Tensor:
+        def _encode(self, token_ids: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+            token_mask = token_ids.ne(self.padding_idx)
+            token_lengths = token_mask.sum(dim=1).clamp(min=1).cpu()
             embedded_tokens = self.embedding(token_ids)
-            token_lengths = token_ids.ne(self.padding_idx).sum(dim=1).clamp(min=1).cpu()
             packed_tokens = pack_padded_sequence(
                 embedded_tokens,
                 lengths=token_lengths,
                 batch_first=True,
                 enforce_sorted=False,
             )
-            _, (hidden_state, _) = self.encoder(packed_tokens)
-            if self.bidirectional:
-                forward_hidden = hidden_state[-2]
-                backward_hidden = hidden_state[-1]
-                last_hidden_state = torch.cat([forward_hidden, backward_hidden], dim=1)
-            else:
-                last_hidden_state = hidden_state[-1]
-            dropped_hidden_state = self.dropout(last_hidden_state)
-            logits = self.classifier(dropped_hidden_state)
+            packed_output, (hidden_state, _) = self.encoder(packed_tokens)
+            encoder_output, _ = pad_packed_sequence(
+                packed_output,
+                batch_first=True,
+                total_length=token_ids.size(1),
+            )
+            return encoder_output, hidden_state, token_mask
+
+        def _pool(self, encoder_output: Tensor, hidden_state: Tensor, token_mask: Tensor) -> Tensor:
+            if self.pooling == "last_hidden":
+                if self.bidirectional:
+                    forward_hidden = hidden_state[-2]
+                    backward_hidden = hidden_state[-1]
+                    return torch.cat([forward_hidden, backward_hidden], dim=1)
+                return hidden_state[-1]
+
+            if self.pooling == "masked_mean":
+                mask = token_mask.unsqueeze(-1).to(dtype=encoder_output.dtype)
+                summed = (encoder_output * mask).sum(dim=1)
+                counts = mask.sum(dim=1).clamp(min=1.0)
+                return summed / counts
+
+            raise ValueError(f"Unsupported pooling strategy: {self.pooling}")
+
+        def forward(self, token_ids: Tensor) -> Tensor:
+            encoder_output, hidden_state, token_mask = self._encode(token_ids)
+            pooled = self._pool(encoder_output, hidden_state, token_mask)
+            pooled = self.dropout(pooled)
+            logits = self.classifier(pooled)
             return logits.squeeze(dim=-1)
 
 else:
@@ -101,6 +125,7 @@ def build_lstm_model(config: LSTMModelConfig) -> SentimentLSTM:
         hidden_dim=config.hidden_dim,
         dropout=config.dropout,
         bidirectional=config.bidirectional,
+        pooling=config.pooling,
         padding_idx=0,
     )
 
