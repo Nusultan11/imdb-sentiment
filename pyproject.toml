@@ -29,6 +29,7 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["imdb_sentiment*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
