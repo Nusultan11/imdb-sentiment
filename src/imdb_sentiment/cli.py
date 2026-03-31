@@ -114,7 +114,7 @@ def _run_predict_command(config_path: str, texts: list[str]) -> None:
     elif family == "lstm":
         if not isinstance(config.model, LSTMModelConfig):
             raise TypeError("CLI LSTM predict expects LSTMModelConfig.")
-        artifacts = load_lstm_checkpoint(config.paths.model_output, config.model)
+        artifacts = load_lstm_checkpoint(config.paths.model_output)
         predictions = predict_lstm_texts(artifacts, texts)
     else:
         raise NotImplementedError(

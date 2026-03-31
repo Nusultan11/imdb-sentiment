@@ -506,8 +506,8 @@ def test_cli_predict_routes_lstm_family_to_torch_predict(tmp_path, monkeypatch, 
 
     observed_calls: list[str] = []
 
-    def _fake_load_lstm_checkpoint(path, config):
-        observed_calls.append(f"load_lstm_checkpoint:{Path(path).name}:{config.max_length}")
+    def _fake_load_lstm_checkpoint(path):
+        observed_calls.append(f"load_lstm_checkpoint:{Path(path).name}")
         return "artifacts"
 
     def _fake_predict_lstm_texts(artifacts, texts):
@@ -534,5 +534,5 @@ def test_cli_predict_routes_lstm_family_to_torch_predict(tmp_path, monkeypatch, 
     cli_module.main()
     payload = json.loads(capsys.readouterr().out)
 
-    assert observed_calls == ["load_lstm_checkpoint:model.pt:6", "predict_lstm_texts:2"]
+    assert observed_calls == ["load_lstm_checkpoint:model.pt", "predict_lstm_texts:2"]
     assert payload == {"predictions": [0, 1]}
