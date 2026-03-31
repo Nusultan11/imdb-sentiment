@@ -195,6 +195,79 @@ def test_load_config_supports_explicit_lstm_pooling_field(tmp_path: Path) -> Non
     assert config.model.pooling == "masked_mean"
 
 
+def test_load_config_defaults_lstm_preprocessing_to_whitespace_v1(tmp_path: Path) -> None:
+    config_path = tmp_path / "lstm_default_preprocessing.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "experiment:",
+                "  family: lstm",
+                "  name: default_preprocessing_test",
+                "seed: 42",
+                "paths:",
+                f"  model_output: {(tmp_path / 'artifacts' / 'models' / 'model.pt').as_posix()}",
+                f"  val_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'val_metrics.json').as_posix()}",
+                f"  test_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'test_metrics.json').as_posix()}",
+                "model:",
+                "  type: lstm",
+                "  vocab_size: 30000",
+                "  max_length: 512",
+                "  embedding_dim: 128",
+                "  hidden_dim: 128",
+                "  bidirectional: true",
+                "  pooling: masked_mean",
+                "  batch_size: 32",
+                "  epochs: 5",
+                "  dropout: 0.3",
+                "  lr: 0.001",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_config(config_path)
+
+    assert isinstance(config.model, LSTMModelConfig)
+    assert config.model.preprocessing == "whitespace_v1"
+
+
+def test_load_config_supports_explicit_lstm_preprocessing_field(tmp_path: Path) -> None:
+    config_path = tmp_path / "lstm_regex_preprocessing.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "experiment:",
+                "  family: lstm",
+                "  name: regex_preprocessing_test",
+                "seed: 42",
+                "paths:",
+                f"  model_output: {(tmp_path / 'artifacts' / 'models' / 'model.pt').as_posix()}",
+                f"  val_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'val_metrics.json').as_posix()}",
+                f"  test_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'test_metrics.json').as_posix()}",
+                "model:",
+                "  type: lstm",
+                "  vocab_size: 30000",
+                "  max_length: 512",
+                "  embedding_dim: 128",
+                "  hidden_dim: 128",
+                "  bidirectional: true",
+                "  pooling: masked_mean",
+                "  preprocessing: regex_v2",
+                "  batch_size: 32",
+                "  epochs: 5",
+                "  dropout: 0.3",
+                "  lr: 0.001",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_config(config_path)
+
+    assert isinstance(config.model, LSTMModelConfig)
+    assert config.model.preprocessing == "regex_v2"
+
+
 def test_repository_uses_separate_masked_mean_lstm_experiment_config() -> None:
     bidirectional_config_path = Path("configs/experiments/lstm_bidirectional_v1.yaml")
     masked_mean_config_path = Path("configs/experiments/lstm_bidirectional_masked_mean_v1.yaml")
@@ -360,6 +433,44 @@ def test_load_config_rejects_invalid_lstm_pooling_value(tmp_path: Path) -> None:
     with pytest.raises(
         ValueError,
         match=r"model\.pooling must be one of: \['last_hidden', 'masked_mean'\]",
+    ):
+        load_config(config_path)
+
+
+def test_load_config_rejects_invalid_lstm_preprocessing_value(tmp_path: Path) -> None:
+    config_path = tmp_path / "lstm_invalid_preprocessing.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "experiment:",
+                "  family: lstm",
+                "  name: invalid_preprocessing_test",
+                "seed: 42",
+                "paths:",
+                f"  model_output: {(tmp_path / 'artifacts' / 'models' / 'model.pt').as_posix()}",
+                f"  val_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'val_metrics.json').as_posix()}",
+                f"  test_metrics_output: {(tmp_path / 'artifacts' / 'reports' / 'test_metrics.json').as_posix()}",
+                "model:",
+                "  type: lstm",
+                "  vocab_size: 30000",
+                "  max_length: 512",
+                "  embedding_dim: 128",
+                "  hidden_dim: 128",
+                "  bidirectional: true",
+                "  pooling: masked_mean",
+                "  preprocessing: regex_v3",
+                "  batch_size: 32",
+                "  epochs: 5",
+                "  dropout: 0.3",
+                "  lr: 0.001",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=r"model\.preprocessing must be one of: \['regex_v2', 'whitespace_v1'\]",
     ):
         load_config(config_path)
 
