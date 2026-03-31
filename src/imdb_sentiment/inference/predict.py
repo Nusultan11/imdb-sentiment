@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import json
 import warnings
 from pathlib import Path
 from typing import Iterable
@@ -10,10 +9,10 @@ import joblib
 from sklearn.exceptions import InconsistentVersionWarning
 from sklearn.pipeline import Pipeline
 
-from imdb_sentiment.artifacts.lstm import load_lstm_artifact_sidecars
+from imdb_sentiment.artifacts.lstm_runtime import load_restored_lstm_artifacts
 from imdb_sentiment.data.lstm import LSTMVocabulary, encode_lstm_text
 from imdb_sentiment.models.lstm.model import SentimentLSTM, build_lstm_model
-from imdb_sentiment.settings import AppConfig, LSTMModelConfig, _load_lstm_model_config
+from imdb_sentiment.settings import AppConfig
 
 try:
     import torch
@@ -65,59 +64,21 @@ def predict_texts(model: Pipeline, texts: Iterable[str]) -> list[int]:
     return [int(pred) for pred in predictions]
 
 
-def _load_lstm_model_config_from_training_payload(
-    training_config_payload: dict[str, object],
-) -> LSTMModelConfig:
-    serialized_model = training_config_payload.get("model")
-    if not isinstance(serialized_model, dict):
-        raise ValueError("training_config.json must contain a model mapping.")
-
-    model_payload = dict(serialized_model)
-    model_payload.setdefault("bidirectional", False)
-    model_payload.setdefault("pooling", "last_hidden")
-    model_payload.setdefault("preprocessing", "whitespace_v1")
-    return _load_lstm_model_config(model_payload)
-
-
-def _load_lstm_decision_threshold(threshold_tuning_path: Path) -> float:
-    if not threshold_tuning_path.exists():
-        return 0.5
-
-    payload = json.loads(threshold_tuning_path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise ValueError("threshold_tuning.json must contain a JSON object.")
-
-    decision_threshold = payload.get("decision_threshold", 0.5)
-    if not isinstance(decision_threshold, (int, float)) or isinstance(decision_threshold, bool):
-        raise ValueError("threshold_tuning.json must contain a numeric decision_threshold.")
-
-    resolved_threshold = float(decision_threshold)
-    if resolved_threshold < 0 or resolved_threshold > 1:
-        raise ValueError("decision_threshold must be in the range [0, 1].")
-
-    return resolved_threshold
-
-
 def load_lstm_checkpoint(
     model_path: str | Path,
 ) -> LSTMInferenceArtifacts:
     _require_torch()
     checkpoint = torch.load(Path(model_path))
-    _artifact_contract, vocabulary_payload, training_config_payload = load_lstm_artifact_sidecars(
-        model_path
-    )
-    vocabulary = LSTMVocabulary(token_to_id=vocabulary_payload)
-    model_config = _load_lstm_model_config_from_training_payload(training_config_payload)
-    decision_threshold = _load_lstm_decision_threshold(_artifact_contract.threshold_tuning_output)
-    model = build_lstm_model(model_config)
+    restored_artifacts = load_restored_lstm_artifacts(model_path)
+    model = build_lstm_model(restored_artifacts.model_config)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
     return LSTMInferenceArtifacts(
         model=model,
-        vocabulary=vocabulary,
-        max_length=model_config.max_length,
-        preprocessing=model_config.preprocessing,
-        decision_threshold=decision_threshold,
+        vocabulary=restored_artifacts.vocabulary,
+        max_length=restored_artifacts.model_config.max_length,
+        preprocessing=restored_artifacts.model_config.preprocessing,
+        decision_threshold=restored_artifacts.decision_threshold,
     )
 
 

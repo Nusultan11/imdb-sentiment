@@ -132,17 +132,17 @@ def test_lstm_regex_preprocessing_contract_flows_through_train_predict_and_evalu
 
     original_build_lstm_dataloader = evaluation_module.build_lstm_dataloader
     evaluation_preprocessing_calls: list[str | None] = []
-    original_load_lstm_decision_threshold = evaluation_module._load_lstm_decision_threshold
+    original_load_restored_lstm_artifacts = evaluation_module.load_restored_lstm_artifacts
     evaluation_threshold_calls: list[float] = []
 
     def _recording_build_lstm_dataloader(**kwargs):
         evaluation_preprocessing_calls.append(kwargs.get("preprocessing"))
         return original_build_lstm_dataloader(**kwargs)
 
-    def _recording_load_lstm_decision_threshold(path):
-        threshold = original_load_lstm_decision_threshold(path)
-        evaluation_threshold_calls.append(threshold)
-        return threshold
+    def _recording_load_restored_lstm_artifacts(model_path):
+        restored_artifacts = original_load_restored_lstm_artifacts(model_path)
+        evaluation_threshold_calls.append(restored_artifacts.decision_threshold)
+        return restored_artifacts
 
     monkeypatch.setattr(
         evaluation_module,
@@ -151,8 +151,8 @@ def test_lstm_regex_preprocessing_contract_flows_through_train_predict_and_evalu
     )
     monkeypatch.setattr(
         evaluation_module,
-        "_load_lstm_decision_threshold",
-        _recording_load_lstm_decision_threshold,
+        "load_restored_lstm_artifacts",
+        _recording_load_restored_lstm_artifacts,
     )
 
     evaluation_metrics = evaluation_module.run_evaluation(config)

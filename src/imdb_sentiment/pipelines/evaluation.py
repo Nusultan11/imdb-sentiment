@@ -7,14 +7,10 @@ from datasets import Dataset
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from sklearn.pipeline import Pipeline
 
-from imdb_sentiment.artifacts.lstm import load_lstm_artifact_sidecars
+from imdb_sentiment.artifacts.lstm_runtime import load_restored_lstm_artifacts
 from imdb_sentiment.data.dataset import load_imdb_dataset
-from imdb_sentiment.data.lstm import LSTMVocabulary, build_lstm_dataloader
-from imdb_sentiment.inference.predict import (
-    _load_lstm_decision_threshold,
-    _load_lstm_model_config_from_training_payload,
-    load_model,
-)
+from imdb_sentiment.data.lstm import build_lstm_dataloader
+from imdb_sentiment.inference.predict import load_model
 from imdb_sentiment.models.lstm.model import build_lstm_model
 from imdb_sentiment.settings import AppConfig, LSTMModelConfig
 
@@ -96,12 +92,7 @@ def _evaluate_lstm_model(config: AppConfig) -> dict[str, float]:
 
     device = _resolve_torch_device()
     checkpoint = torch.load(config.paths.model_output, map_location=device)
-    _artifact_contract, vocabulary_payload, training_config_payload = load_lstm_artifact_sidecars(
-        config.paths.model_output
-    )
-    vocabulary = LSTMVocabulary(token_to_id=vocabulary_payload)
-    decision_threshold = _load_lstm_decision_threshold(_artifact_contract.threshold_tuning_output)
-    model_config = _load_lstm_model_config_from_training_payload(training_config_payload)
+    restored_artifacts = load_restored_lstm_artifacts(config.paths.model_output)
 
     dataset = load_imdb_dataset()
     test_split = dataset["test"]
@@ -110,14 +101,14 @@ def _evaluate_lstm_model(config: AppConfig) -> dict[str, float]:
     dataloader = build_lstm_dataloader(
         texts=x_test,
         labels=y_test,
-        vocabulary=vocabulary,
-        max_length=model_config.max_length,
+        vocabulary=restored_artifacts.vocabulary,
+        max_length=restored_artifacts.model_config.max_length,
         batch_size=config.model.batch_size,
         shuffle=False,
-        preprocessing=model_config.preprocessing,
+        preprocessing=restored_artifacts.model_config.preprocessing,
         seed=config.seed,
     )
-    model = build_lstm_model(model_config)
+    model = build_lstm_model(restored_artifacts.model_config)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.to(device)
     model.eval()
@@ -127,7 +118,7 @@ def _evaluate_lstm_model(config: AppConfig) -> dict[str, float]:
         for token_ids, _labels in dataloader:
             token_ids, _labels = _move_batch_to_device(token_ids, _labels, device)
             logits = model(token_ids)
-            predictions = torch.sigmoid(logits).ge(decision_threshold).to(dtype=torch.int64)
+            predictions = torch.sigmoid(logits).ge(restored_artifacts.decision_threshold).to(dtype=torch.int64)
             all_predictions.extend(predictions.cpu().tolist())
 
     return _evaluate_predictions(y_test, all_predictions)
