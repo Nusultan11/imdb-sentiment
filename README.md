@@ -76,6 +76,16 @@ Saved comparison artifacts:
 - [winner_summary.json](/C:/Users/nurs/OneDrive/Рабочий%20стол/imdb-sentiment/artifacts/reports/model_comparison/winner_summary.json)
 - [evaluation_report_snapshot.json](/C:/Users/nurs/OneDrive/Рабочий%20стол/imdb-sentiment/artifacts/reports/model_comparison/evaluation_report_snapshot.json)
 
+Saved validation and test summary:
+
+| Model | Val Accuracy | Val Precision | Val Recall | Val F1 | Test Accuracy | Test Precision | Test Recall | Test F1 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `tfidf_tuned_v2_final` | 0.9022 | 0.8976 | 0.9066 | 0.9021 | 0.89788 | 0.89664 | 0.89944 | 0.89804 |
+| `lstm_baseline_v1` | 0.8408 | 0.8565 | 0.8196 | 0.8377 | 0.8336 | 0.84600 | 0.81568 | 0.83056 |
+| `lstm_bidirectional_v1` | 0.8418 | 0.9031 | 0.7666 | 0.8293 | 0.83084 | 0.88871 | 0.75640 | 0.81723 |
+| `lstm_bidirectional_masked_mean_v1` | 0.8954 | 0.8990 | 0.8915 | 0.8952 | 0.87724 | 0.88378 | 0.86872 | 0.87619 |
+| `lstm_bidirectional_masked_mean_optuna_regexprep_v1` | 0.9046 | 0.8844 | 0.9314 | 0.9073 | 0.8848 | 0.86511 | 0.91176 | 0.88782 |
+
 Current final winner on the IMDb test split:
 
 - model: `tuned_v2_final`
